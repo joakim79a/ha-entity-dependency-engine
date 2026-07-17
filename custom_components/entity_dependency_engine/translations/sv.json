@@ -1,0 +1,49 @@
+{
+  "title": "Entity Dependency Engine",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Konfigurera Entity Dependency Engine",
+        "description": "Lägger till en skrivskyddad beroendeanalys för Home Assistant-entiteter."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Endast en instans av Entity Dependency Engine kan konfigureras."
+    }
+  },
+  "services": {
+    "generate_report": {
+      "name": "Skapa beroenderapport",
+      "description": "Bygger en rekursiv beroendegraf och skapar en rapport för en entitet.",
+      "fields": {
+        "entity_id": {
+          "name": "Entitet",
+          "description": "Entiteten som ska analyseras."
+        },
+        "include_structural": {
+          "name": "Ta med strukturella relationer",
+          "description": "Tar med enheter och konfigurationsposter i den läsbara rapporten."
+        },
+        "max_depth": {
+          "name": "Maximalt djup",
+          "description": "Begränsar den rekursiva sökningen. Lämna tomt för hela grafen."
+        },
+        "language": {
+          "name": "Rapportspråk",
+          "description": "Språket i den läsbara rapporten. Home Assistants språk används som standard."
+        },
+        "save_public_copy": {
+          "name": "Spara publik kopia",
+          "description": "Skriver även rapporter under /config/www och returnerar /local-länkar. Avstängt som standard eftersom klienter som når din Home Assistant-server också kan kunna hämta filerna."
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "last_report": {
+        "name": "Senaste rapport"
+      }
+    }
+  }
+}

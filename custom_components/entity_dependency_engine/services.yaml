@@ -1,0 +1,27 @@
+generate_report:
+  fields:
+    entity_id:
+      required: true
+      selector:
+        entity: {}
+    include_structural:
+      default: false
+      selector:
+        boolean: {}
+    max_depth:
+      selector:
+        number:
+          min: 1
+          max: 100
+          mode: box
+    language:
+      selector:
+        select:
+          options:
+            - en
+            - sv
+          mode: dropdown
+    save_public_copy:
+      default: false
+      selector:
+        boolean: {}

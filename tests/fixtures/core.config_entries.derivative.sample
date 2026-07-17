@@ -1,0 +1,22 @@
+{
+  "key": "core.config_entries",
+  "data": {
+    "entries": [
+      {
+        "domain": "derivative",
+        "entry_id": "derivative_1",
+        "options": {
+          "name": "Derivative retur LVP",
+          "source": "sensor.return_temperature",
+          "round": 2.0,
+          "time_window": {
+            "hours": 0,
+            "minutes": 15,
+            "seconds": 0
+          },
+          "unit_time": "h"
+        }
+      }
+    ]
+  }
+}

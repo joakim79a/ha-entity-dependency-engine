@@ -1,0 +1,49 @@
+{
+  "title": "Entity Dependency Engine",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Entity Dependency Engine",
+        "description": "Adds a read-only dependency analysis action for Home Assistant entities."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Only one Entity Dependency Engine instance can be configured."
+    }
+  },
+  "services": {
+    "generate_report": {
+      "name": "Generate dependency report",
+      "description": "Builds a recursive dependency graph and creates a report for one entity.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "The entity to analyse."
+        },
+        "include_structural": {
+          "name": "Include structural relations",
+          "description": "Include devices and config entries in the readable report."
+        },
+        "max_depth": {
+          "name": "Maximum depth",
+          "description": "Limits recursive traversal. Leave empty for the full graph."
+        },
+        "language": {
+          "name": "Report language",
+          "description": "Language used in the readable report. Defaults to Home Assistant's language."
+        },
+        "save_public_copy": {
+          "name": "Save public copy",
+          "description": "Also writes reports under /config/www and returns /local URLs. Disabled by default because clients that can reach your Home Assistant server may also be able to retrieve these files."
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "last_report": {
+        "name": "Last report"
+      }
+    }
+  }
+}

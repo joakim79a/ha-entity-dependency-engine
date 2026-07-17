@@ -1,0 +1,19 @@
+test_script:
+  alias: Test script
+  sequence:
+    - action: light.turn_on
+      target:
+        entity_id: light.test
+      data:
+        brightness_pct: >
+          {{ states('input_number.brightness') | int }}
+    - action: script.child_script
+    - choose:
+        - conditions:
+            - condition: state
+              entity_id: input_boolean.enable_extra
+              state: "on"
+          sequence:
+            - action: switch.turn_on
+              target:
+                entity_id: switch.extra

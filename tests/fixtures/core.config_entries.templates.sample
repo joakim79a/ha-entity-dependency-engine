@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "minor_version": 9,
+  "key": "core.config_entries",
+  "data": {
+    "entries": [
+      {
+        "data": {},
+        "domain": "template",
+        "entry_id": "template_entry_1",
+        "options": {
+          "name": "Elpris under medel",
+          "state": "{{ states('sensor.pulse_elpris') | float < state_attr('sensor.pulse_elpris', 'avg_price') | float }}",
+          "template_type": "binary_sensor"
+        },
+        "source": "user",
+        "title": "Elpris under medel",
+        "version": 1
+      },
+      {
+        "data": {},
+        "domain": "template",
+        "entry_id": "template_entry_2",
+        "options": {
+          "name": "Kost el köp",
+          "state": "{{ states.sensor.pulse_elpris.state | float + states('input_number.elskatt_kop') | float }}",
+          "availability": "{{ has_value('sensor.pulse_elpris') }}",
+          "template_type": "sensor"
+        },
+        "source": "user",
+        "title": "Kost el köp",
+        "version": 1
+      },
+      {
+        "data": {},
+        "domain": "sun",
+        "entry_id": "entry_sun",
+        "options": {},
+        "title": "Sun"
+      }
+    ]
+  }
+}

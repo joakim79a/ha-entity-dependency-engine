@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "minor_version": 7,
+  "key": "core.device_registry",
+  "data": {
+    "devices": [
+      {
+        "area_id": "energy",
+        "config_entries": ["entry_shelly"],
+        "connections": [["mac", "AA:BB:CC:DD:EE:FF"]],
+        "created_at": "2025-01-01T00:00:00+00:00",
+        "disabled_by": null,
+        "entry_type": null,
+        "hw_version": "1.0",
+        "id": "device_shelly",
+        "identifiers": [["shelly", "abc123"]],
+        "manufacturer": "Shelly",
+        "model": "Shelly Plus 1PM",
+        "name": "shellyplus1pm-abc123",
+        "name_by_user": "Poolpump",
+        "primary_config_entry": "entry_shelly",
+        "serial_number": null,
+        "sw_version": "2026.1",
+        "via_device_id": null
+      },
+      {
+        "area_id": null,
+        "config_entries": ["entry_sun"],
+        "connections": [],
+        "id": "device_sun",
+        "identifiers": [["sun", "sun"]],
+        "manufacturer": "Home Assistant",
+        "model": "Sun",
+        "name": "Sun",
+        "name_by_user": null,
+        "primary_config_entry": "entry_sun"
+      },
+      "invalid entry",
+      {"name": "Missing ID"}
+    ]
+  }
+}

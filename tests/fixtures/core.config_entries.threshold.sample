@@ -1,0 +1,18 @@
+{
+  "key": "core.config_entries",
+  "data": {
+    "entries": [
+      {
+        "domain": "threshold",
+        "entry_id": "threshold_1",
+        "options": {
+          "entity_id": "sensor.lvp1_total_w",
+          "hysteresis": 0.0,
+          "lower": null,
+          "name": "lvp1 kompressor",
+          "upper": 500.0
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "key": "core.config_entries",
+  "data": {
+    "entries": [
+      {
+        "domain": "utility_meter",
+        "entry_id": "um_1",
+        "options": {
+          "name": "VVB kWh dag",
+          "source": "sensor.vvb_energy",
+          "cycle": "daily",
+          "offset": 0.0,
+          "tariffs": []
+        }
+      },
+      {
+        "domain": "sun",
+        "entry_id": "sun_1",
+        "options": {}
+      }
+    ]
+  }
+}

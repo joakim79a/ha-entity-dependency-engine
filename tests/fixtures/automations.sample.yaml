@@ -1,0 +1,33 @@
+- id: "1001"
+  alias: Test automation
+  triggers:
+    - trigger: state
+      entity_id:
+        - binary_sensor.motion
+        - input_boolean.enable_test
+  conditions:
+    - condition: numeric_state
+      entity_id: sensor.temperature
+      above: input_number.target_temperature
+    - condition: template
+      value_template: >
+        {{ states('input_select.mode') == 'Auto' }}
+  actions:
+    - action: light.turn_on
+      target:
+        entity_id: light.test
+      data:
+        brightness_pct: >
+          {{ states('input_number.brightness') | int }}
+    - action: script.notify_family
+    - choose:
+        - conditions:
+            - condition: state
+              entity_id: input_boolean.extra
+              state: "on"
+          sequence:
+            - action: switch.turn_on
+              target:
+                entity_id:
+                  - switch.one
+                  - switch.two

@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "minor_version": 22,
+  "key": "core.entity_registry",
+  "data": {
+    "entities": [
+      {
+        "aliases": [],
+        "area_id": null,
+        "config_entry_id": "entry_sun",
+        "device_id": "device_sun",
+        "entity_category": "diagnostic",
+        "entity_id": "sensor.sun_next_dawn",
+        "id": "registry_id_1",
+        "labels": [],
+        "name": null,
+        "original_name": "Nästa gryning",
+        "platform": "sun",
+        "suggested_object_id": "sun_next_dawn",
+        "unique_id": "entry_sun-next_dawn"
+      },
+      {
+        "aliases": ["Spotpris"],
+        "area_id": "energy",
+        "config_entry_id": "entry_price",
+        "device_id": null,
+        "entity_id": "sensor.pulse_elpris",
+        "id": "registry_id_2",
+        "labels": ["critical"],
+        "name": "Pulse elpris",
+        "original_name": "Elpris",
+        "platform": "tibber",
+        "unique_id": "pulse-price",
+        "unit_of_measurement": "SEK/kWh"
+      },
+      "invalid entry",
+      {"id": "missing_entity_id"}
+    ]
+  }
+}

@@ -1,0 +1,4 @@
+{"key":"core.config_entries","data":{"entries":[
+{"domain":"group","entry_id":"group_1","options":{"name":"Kitchen lights","group_type":"light","entities":["light.kitchen_one","light.kitchen_two"],"all":false,"hide_members":false}},
+{"domain":"switch_as_x","entry_id":"switch_as_x_1","options":{"entity_id":"switch.raw_spot","target_domain":"light","invert":false}}
+]}}

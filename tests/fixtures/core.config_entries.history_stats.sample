@@ -1,0 +1,19 @@
+{
+  "key": "core.config_entries",
+  "data": {
+    "entries": [
+      {
+        "domain": "history_stats",
+        "entry_id": "history_1",
+        "options": {
+          "entity_id": "binary_sensor.elpris_under_offpeak1",
+          "name": "Tid elpris under offpeak1",
+          "state": ["on"],
+          "start": "{{ (now() - timedelta(days=1)).replace(hour=21) }}",
+          "end": "{{ now().replace(hour=7) }}",
+          "type": "time"
+        }
+      }
+    ]
+  }
+}

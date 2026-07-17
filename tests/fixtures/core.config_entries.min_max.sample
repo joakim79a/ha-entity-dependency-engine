@@ -1,0 +1,21 @@
+{
+  "key": "core.config_entries",
+  "data": {
+    "entries": [
+      {
+        "domain": "min_max",
+        "entry_id": "minmax_1",
+        "options": {
+          "entity_ids": [
+            "sensor.phase_a_power",
+            "sensor.phase_b_power",
+            "sensor.phase_c_power"
+          ],
+          "name": "3em w totalt",
+          "round_digits": 2.0,
+          "type": "sum"
+        }
+      }
+    ]
+  }
+}
