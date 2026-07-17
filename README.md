@@ -68,6 +68,17 @@ Repository metadata is configured for `joakim79a/ha-entity-dependency-engine`. B
 - Runtime installation, update, and removal work on a clean Home Assistant instance
 - A full GitHub release is created for `v0.1.0`
 
+
+## Support the project
+
+Entity Dependency Engine is free and open source.
+
+If you find the integration useful, you can support its continued development:
+
+[Buy me a coffee](https://buymeacoffee.com/joakim79a)
+
+Support is entirely optional and does not affect access to features, support, or updates.
+
 ## License
 
 MIT
