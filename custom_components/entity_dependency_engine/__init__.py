@@ -40,6 +40,7 @@ from .runtime import (
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [Platform.SENSOR]
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 type EntityDependencyEngineConfigEntry = ConfigEntry[
     EntityDependencyEngineRuntimeData
