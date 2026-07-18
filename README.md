@@ -153,10 +153,11 @@ content: |-
   {% if report %}
   ```text
   {{ report }}
-  ```
+
   {% else %}
   no report created yet
   {% endif %}
+  ```
 
 ## Languages
 
