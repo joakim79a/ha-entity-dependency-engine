@@ -139,24 +139,80 @@ server may also be able to retrieve files exposed through `/local`.
 Dependency reports may contain sensitive entity names and configuration
 information. Only enable public copies when you understand that trade-off.
 
-## Dashboard example
+## script example (sv)
+```yaml
+alias: "System: Analysera entitetsrelationer"
+description: Bygger beroendegrafen för en vald entitet och sparar rapporten.
+icon: mdi:file-tree
+mode: single
+fields:
+  target_entity:
+    name: Entitet
+    description: Välj den entitet vars relationer ska analyseras.
+    required: true
+    selector:
+      entity: {}
+sequence:
+  - action: entity_dependency_engine.generate_report
+    data:
+      entity_id: "{{ target_entity }}"
+      language: sv
+      include_structural: false
+      save_public_copy: true
+    response_variable: dependency_result
+  - action: persistent_notification.create
+    data:
+      notification_id: entity_dependency_report
+      title: "Entitetsrapport: {{ target_entity }}"
+      message: >-
+        {{ dependency_result.summary }}
+
+        Föräldrar: {{ dependency_result.parents }} Barn: {{
+        dependency_result.children }} Förfäder: {{ dependency_result.ancestors
+        }} Ättlingar: {{ dependency_result.descendants }}
+
+        Brutna referenser: {{ dependency_result.broken }} Build-varningar: {{
+        dependency_result.build_warnings }}
+
+        [Öppna rapporten]({{ dependency_result.url }})
+
+        [Öppna debugrapporten]({{ dependency_result.debug_url }})
+
+        Skapad: {{ dependency_result.generated }}
+  ```
+
+## Dashboard example (sv)
 
 ```yaml
-type: markdown
-title: Last report
-content: |-
-  {% set report = state_attr(
-    'sensor.entity_dependency_engine_last_report',
-    'report'
-  ) %}
+type: vertical-stack
+cards:
+  - type: button
+    entity: script.system_analysera_entitetsrelationer
+    name: Analysera entitet
+    icon: mdi:file-tree
+    show_state: false
+    tap_action:
+      action: more-info
+    hold_action:
+      action: more-info
+  - type: markdown
+    title: Senaste entitetsrapport
+    content: |-
+      {% set report = state_attr(
+        'sensor.entity_dependency_engine_last_report',
+        'report'
+      ) %}
 
-  {% if report %}
-  ```text
-  {{ report }}
+      {% if report %}
+      ```text
+      {{ report }}
+      ```
+      {% else %}
+      Ingen rapport har skapats ännu.
 
-  {% else %}
-  no report created yet
-  {% endif %}
+      Tryck på **Analysera entitet** ovan.
+      {% endif %}
+
   ```
 
 ## Languages
