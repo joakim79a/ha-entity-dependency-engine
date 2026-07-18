@@ -143,7 +143,7 @@ information. Only enable public copies when you understand that trade-off.
 
 ```yaml
 type: markdown
-title: Latest entity report
+title: Last report
 content: |-
   {% set report = state_attr(
     'sensor.entity_dependency_engine_last_report',
@@ -155,9 +155,8 @@ content: |-
   {{ report }}
   ```
   {% else %}
-  No report has been generated yet.
+  no report created yet
   {% endif %}
-```
 
 ## Languages
 
