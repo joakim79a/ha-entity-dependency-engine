@@ -15,7 +15,7 @@ def test_alpha_manifest_version() -> None:
         (INTEGRATION / "manifest.json").read_text(encoding="utf-8")
     )
 
-    assert manifest["version"] == "0.2.0-alpha.1"
+    assert manifest["version"] == "0.2.0-alpha.2"
 
 
 def test_websocket_commands_are_registered_once() -> None:

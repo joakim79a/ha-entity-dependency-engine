@@ -5,11 +5,13 @@
     "@joakim79a"
   ],
   "config_flow": true,
-  "dependencies": [],
+  "dependencies": [
+    "frontend"
+  ],
   "documentation": "https://github.com/joakim79a/ha-entity-dependency-engine",
   "integration_type": "service",
   "iot_class": "calculated",
   "issue_tracker": "https://github.com/joakim79a/ha-entity-dependency-engine/issues",
   "requirements": [],
-  "version": "0.2.0-alpha.1"
+  "version": "0.2.0-alpha.2"
 }
