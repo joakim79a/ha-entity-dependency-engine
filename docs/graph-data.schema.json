@@ -1,0 +1,355 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/joakim79a/ha-entity-dependency-engine/blob/develop/0.2.0-panel/docs/graph-data.schema.json",
+  "title": "Entity Dependency Engine Graph Data",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "revision",
+    "root_id",
+    "scope",
+    "limits",
+    "statistics",
+    "truncated",
+    "nodes",
+    "edges",
+    "warnings"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "revision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "root_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scope": {
+      "enum": [
+        "direct",
+        "all_parents",
+        "all_children",
+        "all"
+      ]
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requested_max_nodes",
+        "absolute_max_nodes"
+      ],
+      "properties": {
+        "requested_max_nodes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "absolute_max_nodes": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "statistics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "node_count",
+        "edge_count",
+        "total_node_count",
+        "omitted_node_count",
+        "broken_reference_count",
+        "cycle_component_count"
+      ],
+      "properties": {
+        "node_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "edge_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "total_node_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "omitted_node_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "broken_reference_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cycle_component_count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "truncated": {
+      "type": "boolean"
+    },
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/node"
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/edge"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "$defs": {
+    "nullableString": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "node_type",
+        "name",
+        "display_name",
+        "domain",
+        "roles",
+        "upstream_depth",
+        "downstream_depth",
+        "parent_count",
+        "child_count",
+        "parents_loaded",
+        "children_loaded",
+        "expandable_upstream",
+        "expandable_downstream",
+        "broken",
+        "in_cycle",
+        "structural",
+        "runtime",
+        "context"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "node_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "$ref": "#/$defs/nullableString"
+        },
+        "display_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "domain": {
+          "$ref": "#/$defs/nullableString"
+        },
+        "roles": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "root",
+              "parent",
+              "child",
+              "ancestor",
+              "descendant"
+            ]
+          }
+        },
+        "upstream_depth": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "downstream_depth": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "parent_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "child_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "parents_loaded": {
+          "type": "boolean"
+        },
+        "children_loaded": {
+          "type": "boolean"
+        },
+        "expandable_upstream": {
+          "type": "boolean"
+        },
+        "expandable_downstream": {
+          "type": "boolean"
+        },
+        "broken": {
+          "type": "boolean"
+        },
+        "in_cycle": {
+          "type": "boolean"
+        },
+        "structural": {
+          "type": "boolean"
+        },
+        "runtime": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "state",
+                "state_display",
+                "available",
+                "icon"
+              ],
+              "properties": {
+                "state": {
+                  "$ref": "#/$defs/nullableString"
+                },
+                "state_display": {
+                  "$ref": "#/$defs/nullableString"
+                },
+                "available": {
+                  "type": "boolean"
+                },
+                "icon": {
+                  "$ref": "#/$defs/nullableString"
+                }
+              }
+            }
+          ]
+        },
+        "context": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "platform",
+                "device_id",
+                "device_name",
+                "area_id",
+                "area_name",
+                "config_entry_id",
+                "integration"
+              ],
+              "properties": {
+                "platform": {
+                  "$ref": "#/$defs/nullableString"
+                },
+                "device_id": {
+                  "$ref": "#/$defs/nullableString"
+                },
+                "device_name": {
+                  "$ref": "#/$defs/nullableString"
+                },
+                "area_id": {
+                  "$ref": "#/$defs/nullableString"
+                },
+                "area_name": {
+                  "$ref": "#/$defs/nullableString"
+                },
+                "config_entry_id": {
+                  "$ref": "#/$defs/nullableString"
+                },
+                "integration": {
+                  "$ref": "#/$defs/nullableString"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "edge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "source",
+        "target",
+        "relation",
+        "source_parser",
+        "confidence",
+        "label",
+        "structural",
+        "cycle_edge"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target": {
+          "type": "string",
+          "minLength": 1
+        },
+        "relation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_parser": {
+          "type": "string",
+          "minLength": 1
+        },
+        "confidence": {
+          "enum": [
+            "certain",
+            "probable",
+            "dynamic"
+          ]
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "structural": {
+          "type": "boolean"
+        },
+        "cycle_edge": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}
