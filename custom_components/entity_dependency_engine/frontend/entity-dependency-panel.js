@@ -1,4 +1,4 @@
-const PANEL_TAG = "entity-dependency-engine-panel";
+const PANEL_TAG = "ha-panel-entity-dependency-engine";
 
 const escapeHtml = (value) =>
   String(value ?? "")
@@ -749,5 +749,5 @@ class EntityDependencyEnginePanel extends HTMLElement {
 }
 
 if (!customElements.get(PANEL_TAG)) {
-  customElements.define("entity-dependency-engine-panel", EntityDependencyEnginePanel);
+  customElements.define(PANEL_TAG, EntityDependencyEnginePanel);
 }
