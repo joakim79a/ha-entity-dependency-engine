@@ -1,0 +1,240 @@
+{
+  "schema_version": 1,
+  "revision": "example-direct-v1",
+  "root_id": "sensor.living_room_temperature",
+  "scope": "direct",
+  "limits": {
+    "requested_max_nodes": 250,
+    "absolute_max_nodes": 1000
+  },
+  "statistics": {
+    "node_count": 5,
+    "edge_count": 4,
+    "total_node_count": 5,
+    "omitted_node_count": 0,
+    "broken_reference_count": 0,
+    "cycle_component_count": 0
+  },
+  "truncated": false,
+  "nodes": [
+    {
+      "id": "sensor.living_room_temperature",
+      "node_type": "entity",
+      "name": "Living room temperature",
+      "display_name": "Living room temperature",
+      "domain": "sensor",
+      "roles": [
+        "root"
+      ],
+      "upstream_depth": null,
+      "downstream_depth": null,
+      "parent_count": 2,
+      "child_count": 2,
+      "parents_loaded": true,
+      "children_loaded": true,
+      "expandable_upstream": true,
+      "expandable_downstream": true,
+      "broken": false,
+      "in_cycle": false,
+      "structural": false,
+      "runtime": {
+        "state": "21.6",
+        "state_display": "21.6 °C",
+        "available": true,
+        "icon": "mdi:home-thermometer"
+      },
+      "context": {
+        "platform": "template",
+        "device_id": null,
+        "device_name": null,
+        "area_id": null,
+        "area_name": null,
+        "config_entry_id": null,
+        "integration": "template"
+      }
+    },
+    {
+      "id": "sensor.outdoor_temperature",
+      "node_type": "entity",
+      "name": "Outdoor temperature",
+      "display_name": "Outdoor temperature",
+      "domain": "sensor",
+      "roles": [
+        "parent"
+      ],
+      "upstream_depth": 1,
+      "downstream_depth": null,
+      "parent_count": 0,
+      "child_count": 1,
+      "parents_loaded": true,
+      "children_loaded": true,
+      "expandable_upstream": false,
+      "expandable_downstream": true,
+      "broken": false,
+      "in_cycle": false,
+      "structural": false,
+      "runtime": {
+        "state": "14.8",
+        "state_display": "14.8 °C",
+        "available": true,
+        "icon": "mdi:thermometer"
+      },
+      "context": {
+        "platform": "mqtt",
+        "device_id": null,
+        "device_name": null,
+        "area_id": null,
+        "area_name": null,
+        "config_entry_id": null,
+        "integration": "mqtt"
+      }
+    },
+    {
+      "id": "climate.living_room",
+      "node_type": "entity",
+      "name": "Living room climate",
+      "display_name": "Living room climate",
+      "domain": "climate",
+      "roles": [
+        "child"
+      ],
+      "upstream_depth": null,
+      "downstream_depth": 1,
+      "parent_count": 1,
+      "child_count": 0,
+      "parents_loaded": true,
+      "children_loaded": true,
+      "expandable_upstream": true,
+      "expandable_downstream": false,
+      "broken": false,
+      "in_cycle": false,
+      "structural": false,
+      "runtime": {
+        "state": "heat",
+        "state_display": "Heating",
+        "available": true,
+        "icon": "mdi:thermostat"
+      },
+      "context": {
+        "platform": "generic_thermostat",
+        "device_id": null,
+        "device_name": null,
+        "area_id": null,
+        "area_name": null,
+        "config_entry_id": null,
+        "integration": "generic_thermostat"
+      }
+    },
+    {
+      "id": "sensor.temperature_offset",
+      "node_type": "entity",
+      "name": "Temperature offset",
+      "display_name": "Temperature offset",
+      "domain": "sensor",
+      "roles": [
+        "parent"
+      ],
+      "upstream_depth": 1,
+      "downstream_depth": null,
+      "parent_count": 0,
+      "child_count": 1,
+      "parents_loaded": true,
+      "children_loaded": true,
+      "expandable_upstream": false,
+      "expandable_downstream": true,
+      "broken": false,
+      "in_cycle": false,
+      "structural": false,
+      "runtime": {
+        "state": "0.5",
+        "state_display": "0.5 °C",
+        "available": true,
+        "icon": "mdi:tune"
+      },
+      "context": {
+        "platform": "input_number",
+        "device_id": null,
+        "device_name": null,
+        "area_id": null,
+        "area_name": null,
+        "config_entry_id": null,
+        "integration": "input_number"
+      }
+    },
+    {
+      "id": "automation.temperature_warning",
+      "node_type": "automation",
+      "name": "Temperature warning",
+      "display_name": "Temperature warning",
+      "domain": "automation",
+      "roles": [
+        "child"
+      ],
+      "upstream_depth": null,
+      "downstream_depth": 1,
+      "parent_count": 1,
+      "child_count": 0,
+      "parents_loaded": true,
+      "children_loaded": true,
+      "expandable_upstream": true,
+      "expandable_downstream": false,
+      "broken": false,
+      "in_cycle": false,
+      "structural": false,
+      "runtime": {
+        "state": "on",
+        "state_display": "On",
+        "available": true,
+        "icon": "mdi:robot"
+      },
+      "context": null
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-b87c70139fb2",
+      "source": "sensor.living_room_temperature",
+      "target": "automation.temperature_warning",
+      "relation": "triggers",
+      "source_parser": "automations",
+      "confidence": "certain",
+      "label": "Triggers",
+      "structural": false,
+      "cycle_edge": false
+    },
+    {
+      "id": "edge-2c736bd0ec2c",
+      "source": "sensor.living_room_temperature",
+      "target": "climate.living_room",
+      "relation": "reads",
+      "source_parser": "config_entries",
+      "confidence": "certain",
+      "label": "Reads",
+      "structural": false,
+      "cycle_edge": false
+    },
+    {
+      "id": "edge-9f3829c63060",
+      "source": "sensor.outdoor_temperature",
+      "target": "sensor.living_room_temperature",
+      "relation": "reads",
+      "source_parser": "gui_templates",
+      "confidence": "certain",
+      "label": "Reads",
+      "structural": false,
+      "cycle_edge": false
+    },
+    {
+      "id": "edge-cfe0a85e352b",
+      "source": "sensor.temperature_offset",
+      "target": "sensor.living_room_temperature",
+      "relation": "reads",
+      "source_parser": "gui_templates",
+      "confidence": "certain",
+      "label": "Reads",
+      "structural": false,
+      "cycle_edge": false
+    }
+  ],
+  "warnings": []
+}
