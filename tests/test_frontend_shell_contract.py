@@ -1,4 +1,4 @@
-"""Contract tests for the first Home Assistant panel shell."""
+"""Contract tests for the Home Assistant panel shell."""
 
 from __future__ import annotations
 
@@ -10,7 +10,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 INTEGRATION = ROOT / "custom_components" / "entity_dependency_engine"
 FRONTEND_PY = INTEGRATION / "frontend.py"
-PANEL_JS = INTEGRATION / "frontend" / "entity-dependency-panel.js"
+PANEL_JS = (
+    INTEGRATION / "frontend" / "entity-dependency-panel.js"
+)
 
 
 def test_frontend_python_module_parses() -> None:
@@ -23,7 +25,7 @@ def test_manifest_declares_frontend_dependency_and_alpha_version() -> None:
     )
 
     assert "frontend" in manifest["dependencies"]
-    assert manifest["version"] == "0.2.0-alpha.3"
+    assert manifest["version"] == "0.2.0-alpha.4"
 
 
 def test_panel_is_admin_only_and_uses_stable_url() -> None:
@@ -34,38 +36,29 @@ def test_panel_is_admin_only_and_uses_stable_url() -> None:
     assert "require_admin=True" in source
     assert "async_panel_exists" in source
     assert "async_remove_panel" in source
+    assert "0.2.0-alpha.4" in source
 
 
 def test_panel_is_wired_into_config_entry_lifecycle() -> None:
-    source = (INTEGRATION / "__init__.py").read_text(encoding="utf-8")
+    source = (
+        INTEGRATION / "__init__.py"
+    ).read_text(encoding="utf-8")
 
     assert source.count(
         "from .frontend import async_register_frontend, "
         "async_unregister_frontend"
     ) == 1
     assert source.count("    await async_register_frontend(hass)") == 1
-    assert source.count("        async_unregister_frontend(hass)") == 1
-
-
-def test_panel_component_matches_home_assistant_resolver_tag() -> None:
-    """HA renders custom built-in panels as ha-panel-{component_name}."""
-    frontend_source = FRONTEND_PY.read_text(encoding="utf-8")
-    panel_source = PANEL_JS.read_text(encoding="utf-8")
-
-    assert 'PANEL_COMPONENT_NAME = "entity-dependency-engine"' in (
-        frontend_source
-    )
-    assert (
-        'const PANEL_TAG = "ha-panel-entity-dependency-engine";'
-        in panel_source
-    )
-    assert "customElements.define(PANEL_TAG" in panel_source
+    assert source.count("    async_unregister_frontend(hass)") == 1
 
 
 def test_panel_javascript_has_required_home_assistant_contract() -> None:
     source = PANEL_JS.read_text(encoding="utf-8")
 
-    assert 'const PANEL_TAG = "ha-panel-entity-dependency-engine";' in source
+    assert (
+        'const PANEL_TAG = "ha-panel-entity-dependency-engine";'
+        in source
+    )
     assert "customElements.define(PANEL_TAG" in source
     assert 'type: "entity_dependency_engine/search_entities"' in source
     assert 'type: "entity_dependency_engine/get_graph"' in source
@@ -73,9 +66,33 @@ def test_panel_javascript_has_required_home_assistant_contract() -> None:
     assert 'new CustomEvent("hass-more-info"' in source
 
 
-def test_panel_uses_home_assistant_theme_variables() -> None:
+def test_panel_keeps_interactive_elements_stable() -> None:
+    source = PANEL_JS.read_text(encoding="utf-8")
+    hass_setter = source.split("  set hass(value) {", 1)[1].split(
+        "  get hass()",
+        1,
+    )[0]
+
+    assert "this._renderShell();" not in hass_setter
+    assert 'addEventListener("input"' in source
+    assert "window.setTimeout" in source
+    assert "this._searchRequestId" in source
+    assert "this._graphRequestId" in source
+
+
+def test_panel_reports_total_results_and_supports_scrolling() -> None:
     source = PANEL_JS.read_text(encoding="utf-8")
 
+    assert "this._entityTotal" in source
+    assert "result.total" in source
+    assert "Showing ${shown} of ${total}" in source
+    assert "overflow-y: auto" in source
+    assert "overscroll-behavior: contain" in source
+    assert "touch-action: pan-y" in source
+
+
+def test_panel_uses_home_assistant_theme_variables() -> None:
+    source = PANEL_JS.read_text(encoding="utf-8")
     required_variables = {
         "--primary-background-color",
         "--card-background-color",

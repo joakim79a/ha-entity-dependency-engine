@@ -18,7 +18,7 @@ PANEL_ICON = "mdi:graph"
 FRONTEND_ROOT = Path(__file__).parent / "frontend"
 FRONTEND_STATIC_URL = f"/{DOMAIN}_frontend"
 FRONTEND_MODULE_URL = (
-    f"{FRONTEND_STATIC_URL}/entity-dependency-panel.js?v=0.2.0-alpha.3"
+    f"{FRONTEND_STATIC_URL}/entity-dependency-panel.js?v=0.2.0-alpha.4"
 )
 
 DATA_FRONTEND_STATIC_REGISTERED = f"{DOMAIN}_frontend_static_registered"
@@ -48,7 +48,7 @@ async def async_register_frontend(hass: HomeAssistant) -> None:
             sidebar_icon=PANEL_ICON,
             sidebar_default_visible=True,
             frontend_url_path=PANEL_URL_PATH,
-            config={"version": "0.2.0-alpha.3"},
+            config={"version": "0.2.0-alpha.4"},
             require_admin=True,
         )
 

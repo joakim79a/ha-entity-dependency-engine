@@ -21,26 +21,33 @@ class EntityDependencyEnginePanel extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
+
     this._hass = undefined;
     this._panel = undefined;
     this._route = undefined;
     this._narrow = false;
+
     this._query = "";
     this._entities = [];
+    this._entityTotal = 0;
     this._graph = undefined;
     this._selectedEntityId = undefined;
-    this._loading = false;
+
+    this._loadingSearch = false;
+    this._loadingGraph = false;
     this._error = undefined;
+
+    this._searchTimer = undefined;
+    this._searchRequestId = 0;
+    this._graphRequestId = 0;
+
+    this._rendered = false;
     this._initialized = false;
   }
 
   set hass(value) {
     this._hass = value;
-    this._render();
-    if (value && !this._initialized) {
-      this._initialized = true;
-      queueMicrotask(() => this._searchEntities());
-    }
+    this._initializeWhenReady();
   }
 
   get hass() {
@@ -61,7 +68,29 @@ class EntityDependencyEnginePanel extends HTMLElement {
   }
 
   connectedCallback() {
-    this._render();
+    if (!this._rendered) {
+      this._renderShell();
+      this._bindEvents();
+      this._rendered = true;
+    }
+
+    this._initializeWhenReady();
+  }
+
+  disconnectedCallback() {
+    window.clearTimeout(this._searchTimer);
+  }
+
+  _initializeWhenReady() {
+    if (
+      !this._initialized &&
+      this._hass &&
+      this.isConnected &&
+      this._rendered
+    ) {
+      this._initialized = true;
+      queueMicrotask(() => this._searchEntities());
+    }
   }
 
   async _callWS(message) {
@@ -77,9 +106,10 @@ class EntityDependencyEnginePanel extends HTMLElement {
   }
 
   async _searchEntities({ refresh = false } = {}) {
-    this._loading = true;
+    const requestId = ++this._searchRequestId;
+    this._loadingSearch = true;
     this._error = undefined;
-    this._render();
+    this._renderStatus();
 
     try {
       const result = await this._callWS({
@@ -88,24 +118,38 @@ class EntityDependencyEnginePanel extends HTMLElement {
         limit: 50,
         refresh,
       });
+
+      if (requestId !== this._searchRequestId) return;
+
       this._entities = result.entities ?? [];
+      this._entityTotal = Number(result.total ?? this._entities.length);
     } catch (error) {
+      if (requestId !== this._searchRequestId) return;
+
       this._entities = [];
+      this._entityTotal = 0;
       this._error = error?.message ?? String(error);
     } finally {
-      this._loading = false;
-      this._render();
+      if (requestId === this._searchRequestId) {
+        this._loadingSearch = false;
+        this._renderResults();
+        this._renderStatus();
+      }
     }
   }
 
   async _loadGraph(entityId, { refresh = false } = {}) {
+    const requestId = ++this._graphRequestId;
     this._selectedEntityId = entityId;
-    this._loading = true;
+    this._loadingGraph = true;
     this._error = undefined;
-    this._render();
+
+    this._renderResults();
+    this._renderGraph();
+    this._renderStatus();
 
     try {
-      this._graph = await this._callWS({
+      const graph = await this._callWS({
         type: "entity_dependency_engine/get_graph",
         entity_id: entityId,
         scope: "direct",
@@ -113,12 +157,20 @@ class EntityDependencyEnginePanel extends HTMLElement {
         include_structural: false,
         refresh,
       });
+
+      if (requestId !== this._graphRequestId) return;
+      this._graph = graph;
     } catch (error) {
+      if (requestId !== this._graphRequestId) return;
+
       this._graph = undefined;
       this._error = error?.message ?? String(error);
     } finally {
-      this._loading = false;
-      this._render();
+      if (requestId === this._graphRequestId) {
+        this._loadingGraph = false;
+        this._renderGraph();
+        this._renderStatus();
+      }
     }
   }
 
@@ -145,20 +197,45 @@ class EntityDependencyEnginePanel extends HTMLElement {
       document.execCommand("copy");
       textarea.remove();
     }
+
+    const message = this.shadowRoot?.querySelector("#copy-message");
+    if (message) {
+      message.textContent = `Copied ${entityId}`;
+      window.setTimeout(() => {
+        if (message.textContent === `Copied ${entityId}`) {
+          message.textContent = "";
+        }
+      }, 1800);
+    }
   }
 
   _bindEvents() {
     const root = this.shadowRoot;
     if (!root) return;
 
+    const input = root.querySelector("#entity-search");
+    const results = root.querySelector("#entity-results");
+    const graph = root.querySelector("#graph-content");
+
+    input?.addEventListener("input", (event) => {
+      this._query = event.currentTarget.value;
+      window.clearTimeout(this._searchTimer);
+
+      this._searchTimer = window.setTimeout(() => {
+        this._searchEntities();
+      }, 300);
+    });
+
     root.querySelector("#search-form")?.addEventListener("submit", (event) => {
       event.preventDefault();
-      this._query = root.querySelector("#entity-search")?.value ?? "";
+      window.clearTimeout(this._searchTimer);
+      this._query = input?.value ?? "";
       this._searchEntities();
     });
 
     root.querySelector("#refresh-search")?.addEventListener("click", () => {
-      this._query = root.querySelector("#entity-search")?.value ?? this._query;
+      window.clearTimeout(this._searchTimer);
+      this._query = input?.value ?? this._query;
       this._searchEntities({ refresh: true });
     });
 
@@ -168,78 +245,135 @@ class EntityDependencyEnginePanel extends HTMLElement {
       }
     });
 
-    root.querySelectorAll("[data-select-entity]").forEach((element) => {
-      element.addEventListener("click", () => {
-        const entityId = element.getAttribute("data-select-entity");
-        if (entityId) this._loadGraph(entityId);
-      });
+    results?.addEventListener("click", (event) => {
+      const target = event.target.closest("[data-select-entity]");
+      const entityId = target?.getAttribute("data-select-entity");
+
+      if (entityId) {
+        this._loadGraph(entityId);
+      }
     });
 
-    root.querySelectorAll("[data-more-info]").forEach((element) => {
-      element.addEventListener("click", (event) => {
-        event.stopPropagation();
-        const entityId = element.getAttribute("data-more-info");
+    graph?.addEventListener("click", (event) => {
+      const moreInfo = event.target.closest("[data-more-info]");
+      if (moreInfo) {
+        const entityId = moreInfo.getAttribute("data-more-info");
         if (entityId) this._openMoreInfo(entityId);
-      });
-    });
+        return;
+      }
 
-    root.querySelectorAll("[data-copy-entity]").forEach((element) => {
-      element.addEventListener("click", (event) => {
-        event.stopPropagation();
-        const entityId = element.getAttribute("data-copy-entity");
+      const copy = event.target.closest("[data-copy-entity]");
+      if (copy) {
+        const entityId = copy.getAttribute("data-copy-entity");
         if (entityId) this._copyEntityId(entityId);
-      });
+      }
     });
   }
 
-  _renderEntityResults() {
-    if (this._loading && !this._entities.length) {
-      return '<div class="empty">Loading entities…</div>';
+  _resultSummary() {
+    const shown = this._entities.length;
+    const total = this._entityTotal;
+
+    if (this._query.trim()) {
+      return shown < total
+        ? `Showing ${shown} of ${total} matches`
+        : `${total} ${total === 1 ? "match" : "matches"}`;
+    }
+
+    return shown < total
+      ? `Showing ${shown} of ${total} entities`
+      : `${total} ${total === 1 ? "entity" : "entities"}`;
+  }
+
+  _renderStatus() {
+    const error = this.shadowRoot?.querySelector("#error");
+    const searchProgress = this.shadowRoot?.querySelector("#search-progress");
+    const graphProgress = this.shadowRoot?.querySelector("#graph-progress");
+
+    if (error) {
+      error.hidden = !this._error;
+      error.textContent = this._error ?? "";
+    }
+
+    if (searchProgress) {
+      searchProgress.hidden = !this._loadingSearch;
+    }
+
+    if (graphProgress) {
+      graphProgress.hidden = !this._loadingGraph;
+    }
+  }
+
+  _renderResults() {
+    const summary = this.shadowRoot?.querySelector("#result-summary");
+    const results = this.shadowRoot?.querySelector("#entity-results");
+    if (!summary || !results) return;
+
+    summary.textContent = this._resultSummary();
+
+    if (this._loadingSearch && !this._entities.length) {
+      results.innerHTML = `
+        <div class="empty small">Loading entities…</div>
+      `;
+      return;
     }
 
     if (!this._entities.length) {
-      return '<div class="empty">No matching entities.</div>';
+      results.innerHTML = `
+        <div class="empty small">No matching entities.</div>
+      `;
+      return;
     }
 
-    return this._entities
-      .map(
-        (entity) => `
+    results.innerHTML = this._entities
+      .map((entity) => {
+        const selected =
+          entity.entity_id === this._selectedEntityId ? " selected" : "";
+        const displayName = entity.display_name || entity.entity_id;
+        const state = entity.state_display ?? entity.state;
+        const stateText =
+          state == null ? "" : `<span class="entity-state">${escapeHtml(state)}</span>`;
+
+        return `
           <button
-            class="entity-row ${
-              entity.entity_id === this._selectedEntityId ? "selected" : ""
-            }"
+            class="entity-result${selected}"
             type="button"
             data-select-entity="${escapeHtml(entity.entity_id)}"
+            title="${escapeHtml(entity.entity_id)}"
           >
-            <span class="entity-main">
-              <strong>${escapeHtml(entity.display_name || entity.entity_id)}</strong>
-              <span>${escapeHtml(entity.entity_id)}</span>
+            <span class="entity-result-main">
+              <strong>${escapeHtml(displayName)}</strong>
+              <span class="entity-id">${escapeHtml(entity.entity_id)}</span>
+              ${stateText}
             </span>
-            <span class="entity-counts" title="Parents / children">
-              ↑ ${Number(entity.parent_count ?? 0)} · ↓ ${Number(
-                entity.child_count ?? 0,
-              )}
+
+            <span class="relation-counts" aria-label="Relationship counts">
+              ↑ ${Number(entity.parent_count ?? 0)}
+              ·
+              ↓ ${Number(entity.child_count ?? 0)}
             </span>
           </button>
-        `,
-      )
+        `;
+      })
       .join("");
   }
 
   _renderNode(node) {
     const state = node.runtime?.state_display ?? node.runtime?.state;
+    const role = escapeHtml(roleLabel(node.roles));
+
     return `
-      <article class="node ${node.roles?.includes("root") ? "root" : ""} ${
-        node.broken ? "broken" : ""
-      }">
-        <div class="node-heading">
-          <span class="role">${escapeHtml(roleLabel(node.roles))}</span>
-          ${node.in_cycle ? '<span class="warning">Cycle</span>' : ""}
-          ${node.broken ? '<span class="warning">Broken</span>' : ""}
+      <article class="node-card ${node.broken ? "broken" : ""}">
+        <div class="node-labels">
+          <span class="badge">${role}</span>
+          ${node.in_cycle ? '<span class="badge warning">Cycle</span>' : ""}
+          ${node.broken ? '<span class="badge danger">Broken</span>' : ""}
         </div>
+
         <strong>${escapeHtml(node.display_name || node.id)}</strong>
         <code>${escapeHtml(node.id)}</code>
-        ${state != null ? `<span class="state">${escapeHtml(state)}</span>` : ""}
+        ${state != null ? `<span class="node-state">${escapeHtml(state)}</span>` : ""}
+
         <div class="node-actions">
           <button type="button" data-more-info="${escapeHtml(node.id)}">
             More info
@@ -252,15 +386,61 @@ class EntityDependencyEnginePanel extends HTMLElement {
     `;
   }
 
+  _renderNodeColumn(title, description, nodes, emptyText) {
+    return `
+      <section class="graph-column">
+        <div class="column-heading">
+          <div>
+            <h3>${escapeHtml(title)}</h3>
+            <p>${escapeHtml(description)}</p>
+          </div>
+          <span class="count-badge">${nodes.length}</span>
+        </div>
+
+        <div class="node-list">
+          ${
+            nodes.length
+              ? nodes.map((node) => this._renderNode(node)).join("")
+              : `<div class="empty">${escapeHtml(emptyText)}</div>`
+          }
+        </div>
+      </section>
+    `;
+  }
+
   _renderGraph() {
+    const content = this.shadowRoot?.querySelector("#graph-content");
+    const graphTitle = this.shadowRoot?.querySelector("#graph-title");
+    const graphStats = this.shadowRoot?.querySelector("#graph-stats");
+    const refreshButton = this.shadowRoot?.querySelector("#refresh-graph");
+
+    if (!content || !graphTitle || !graphStats || !refreshButton) return;
+
+    refreshButton.disabled = !this._selectedEntityId || this._loadingGraph;
+
+    if (this._loadingGraph && !this._graph) {
+      graphTitle.textContent = this._selectedEntityId ?? "Dependency graph";
+      graphStats.textContent = "Loading graph…";
+      content.innerHTML = `
+        <div class="graph-empty">
+          <div class="graph-symbol">⌁</div>
+          <h2>Loading dependency graph</h2>
+        </div>
+      `;
+      return;
+    }
+
     if (!this._graph) {
-      return `
-        <section class="graph-empty">
-          <div class="graph-placeholder">⌁</div>
+      graphTitle.textContent = "Select an entity";
+      graphStats.textContent = "";
+      content.innerHTML = `
+        <div class="graph-empty">
+          <div class="graph-symbol">⌁</div>
           <h2>Select an entity</h2>
           <p>The first version shows its direct parents and children.</p>
-        </section>
+        </div>
       `;
+      return;
     }
 
     const nodes = this._graph.nodes ?? [];
@@ -269,482 +449,583 @@ class EntityDependencyEnginePanel extends HTMLElement {
     const children = nodes.filter((node) => node.roles?.includes("child"));
     const statistics = this._graph.statistics ?? {};
 
-    return `
-      <section class="graph-section">
-        <header class="graph-header">
-          <div>
-            <span class="eyebrow">Direct dependency graph</span>
-            <h2>${escapeHtml(this._graph.root_id)}</h2>
-          </div>
-          <div class="graph-actions">
-            <span>${Number(statistics.node_count ?? nodes.length)} nodes</span>
-            <span>${Number(statistics.edge_count ?? 0)} edges</span>
-            <button id="refresh-graph" type="button">Refresh graph</button>
-          </div>
-        </header>
+    graphTitle.textContent = this._graph.root_id;
+    graphStats.textContent =
+      `${Number(statistics.node_count ?? nodes.length)} nodes · ` +
+      `${Number(statistics.edge_count ?? 0)} edges`;
 
-        <div class="graph-grid">
-          <section class="lane parents">
-            <h3>Parents <span>${parents.length}</span></h3>
-            <p>Things the selected entity depends on.</p>
-            <div class="node-list">
-              ${
-                parents.length
-                  ? parents.map((node) => this._renderNode(node)).join("")
-                  : '<div class="empty compact">No direct parents.</div>'
-              }
-            </div>
-          </section>
+    content.innerHTML = `
+      <div class="graph-columns">
+        ${this._renderNodeColumn(
+          "Parents",
+          "Things the selected entity depends on.",
+          parents,
+          "No direct parents.",
+        )}
 
-          <section class="lane root-lane">
-            <h3>Selected <span>${roots.length}</span></h3>
-            <p>The current centre of the graph.</p>
-            <div class="node-list">
-              ${roots.map((node) => this._renderNode(node)).join("")}
-            </div>
-          </section>
+        ${this._renderNodeColumn(
+          "Selected",
+          "The current centre of the graph.",
+          roots,
+          "Selected entity was not returned.",
+        )}
 
-          <section class="lane children">
-            <h3>Children <span>${children.length}</span></h3>
-            <p>Things that depend on the selected entity.</p>
-            <div class="node-list">
-              ${
-                children.length
-                  ? children.map((node) => this._renderNode(node)).join("")
-                  : '<div class="empty compact">No direct children.</div>'
-              }
-            </div>
-          </section>
-        </div>
+        ${this._renderNodeColumn(
+          "Children",
+          "Things that depend on the selected entity.",
+          children,
+          "No direct children.",
+        )}
+      </div>
 
-        <footer class="alpha-note">
-          Interactive zoom, pan, branch expansion and full graph layout arrive in
-          the next frontend milestone.
-        </footer>
-      </section>
+      <div class="milestone-note">
+        Interactive zoom, pan, branch expansion, and full graph layout arrive
+        in the next frontend milestone.
+      </div>
     `;
   }
 
-  _render() {
+  _renderShell() {
     if (!this.shadowRoot) return;
 
     this.shadowRoot.innerHTML = `
       <style>
         :host {
           display: block;
+          box-sizing: border-box;
           min-height: 100%;
           color: var(--primary-text-color);
           background: var(--primary-background-color);
           font-family: var(--paper-font-body1_-_font-family, sans-serif);
+        }
+
+        *,
+        *::before,
+        *::after {
           box-sizing: border-box;
         }
 
-        * { box-sizing: border-box; }
-        button, input { font: inherit; }
+        button,
+        input {
+          font: inherit;
+        }
+
+        button {
+          color: var(--primary-text-color);
+        }
 
         .page {
           min-height: 100vh;
-          padding: 20px;
+          padding: 16px;
         }
 
-        .topbar {
+        .page-header {
           display: flex;
           align-items: center;
-          justify-content: space-between;
-          gap: 16px;
-          margin-bottom: 16px;
+          gap: 10px;
+          margin-bottom: 14px;
         }
 
-        .title-group {
-          display: flex;
-          align-items: center;
-          gap: 12px;
+        .page-header h1 {
+          margin: 0;
+          font-size: 24px;
+          line-height: 1.2;
         }
 
-        h1, h2, h3, p { margin: 0; }
-        h1 { font-size: 24px; }
-        h2 { font-size: 20px; }
-        h3 { font-size: 16px; }
-
-        .badge,
-        .role,
-        .warning,
-        .graph-actions span,
-        .lane h3 span {
-          display: inline-flex;
-          align-items: center;
-          border-radius: 999px;
-          padding: 3px 8px;
-          font-size: 12px;
-          font-weight: 600;
-        }
-
-        .badge,
-        .role,
-        .lane h3 span {
-          color: var(--primary-color);
-          background: color-mix(in srgb, var(--primary-color) 12%, transparent);
-        }
-
-        .warning {
-          color: var(--warning-color, #f0a000);
-          background: color-mix(
-            in srgb,
-            var(--warning-color, #f0a000) 14%,
-            transparent
-          );
-        }
-
-        .workspace {
+        .layout {
           display: grid;
-          grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
-          gap: 16px;
-          align-items: start;
+          grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
+          gap: 14px;
+          height: calc(100vh - 88px);
+          min-height: 520px;
         }
 
-        .sidebar,
-        .graph-section,
-        .graph-empty {
-          background: var(--card-background-color);
+        .card {
           border: 1px solid var(--divider-color);
-          border-radius: var(--ha-card-border-radius, 12px);
+          border-radius: 12px;
+          background: var(--card-background-color);
           box-shadow: var(--ha-card-box-shadow, none);
         }
 
         .sidebar {
-          position: sticky;
-          top: 16px;
+          display: flex;
+          flex-direction: column;
+          min-height: 0;
           overflow: hidden;
         }
 
-        .search-wrap {
-          padding: 16px;
+        .search-section {
+          flex: 0 0 auto;
+          padding: 14px;
           border-bottom: 1px solid var(--divider-color);
         }
 
-        form {
+        #search-form {
           display: grid;
           grid-template-columns: minmax(0, 1fr) auto;
           gap: 8px;
         }
 
-        input {
-          width: 100%;
+        #entity-search {
           min-width: 0;
-          padding: 10px 12px;
-          color: var(--primary-text-color);
-          background: var(--primary-background-color);
+          height: 40px;
+          padding: 0 12px;
           border: 1px solid var(--divider-color);
           border-radius: 8px;
           outline: none;
-        }
-
-        input:focus {
-          border-color: var(--primary-color);
-          box-shadow: 0 0 0 2px
-            color-mix(in srgb, var(--primary-color) 18%, transparent);
-        }
-
-        button {
-          cursor: pointer;
           color: var(--primary-text-color);
-          background: transparent;
-          border: 1px solid var(--divider-color);
-          border-radius: 8px;
-          padding: 9px 12px;
+          background: var(--card-background-color);
         }
 
-        button:hover {
-          background: color-mix(
+        #entity-search:focus {
+          border-color: var(--primary-color);
+          box-shadow: 0 0 0 2px color-mix(
             in srgb,
-            var(--primary-text-color) 7%,
+            var(--primary-color) 20%,
             transparent
           );
         }
 
-        button.primary {
+        .primary-button {
+          border: 0;
+          border-radius: 8px;
+          padding: 0 16px;
           color: var(--text-primary-color, white);
           background: var(--primary-color);
-          border-color: var(--primary-color);
+          cursor: pointer;
         }
 
-        .sidebar-tools {
+        .search-meta {
           display: flex;
           align-items: center;
           justify-content: space-between;
           gap: 8px;
-          margin-top: 10px;
+          min-height: 38px;
+          margin-top: 8px;
           color: var(--secondary-text-color);
-          font-size: 12px;
+          font-size: 13px;
+        }
+
+        .text-button,
+        .node-actions button,
+        #refresh-graph {
+          min-height: 32px;
+          border: 1px solid var(--divider-color);
+          border-radius: 8px;
+          padding: 4px 10px;
+          background: transparent;
+          cursor: pointer;
+        }
+
+        .text-button:hover,
+        .node-actions button:hover,
+        #refresh-graph:hover {
+          background: var(--secondary-background-color);
+        }
+
+        .progress {
+          height: 3px;
+          overflow: hidden;
+          background: color-mix(
+            in srgb,
+            var(--primary-color) 20%,
+            transparent
+          );
+        }
+
+        .progress::after {
+          display: block;
+          width: 35%;
+          height: 100%;
+          content: "";
+          background: var(--primary-color);
+          animation: progress 1s infinite ease-in-out;
+        }
+
+        .progress[hidden] {
+          display: none;
+        }
+
+        @keyframes progress {
+          from { transform: translateX(-100%); }
+          to { transform: translateX(390%); }
         }
 
         .entity-results {
-          max-height: calc(100vh - 230px);
-          overflow: auto;
+          flex: 1 1 auto;
+          min-height: 0;
+          overflow-x: hidden;
+          overflow-y: auto;
+          overscroll-behavior: contain;
+          scrollbar-gutter: stable;
+          touch-action: pan-y;
           padding: 8px;
         }
 
-        .entity-row {
-          width: 100%;
+        .entity-result {
           display: flex;
-          align-items: center;
+          width: 100%;
+          align-items: flex-start;
           justify-content: space-between;
-          gap: 12px;
-          margin: 0 0 6px;
-          padding: 10px;
+          gap: 8px;
+          margin: 0 0 5px;
+          border: 1px solid transparent;
+          border-radius: 8px;
+          padding: 9px;
           text-align: left;
-          border-color: transparent;
+          background: transparent;
+          cursor: pointer;
         }
 
-        .entity-row.selected {
+        .entity-result:hover {
+          background: var(--secondary-background-color);
+        }
+
+        .entity-result.selected {
           border-color: var(--primary-color);
-          background: color-mix(in srgb, var(--primary-color) 10%, transparent);
+          background: color-mix(
+            in srgb,
+            var(--primary-color) 8%,
+            var(--card-background-color)
+          );
         }
 
-        .entity-main {
+        .entity-result-main {
+          display: flex;
           min-width: 0;
-          display: grid;
-          gap: 3px;
+          flex-direction: column;
+          gap: 2px;
         }
 
-        .entity-main strong,
-        .entity-main span {
+        .entity-result-main strong,
+        .entity-id,
+        .entity-state {
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
         }
 
-        .entity-main span,
-        .entity-counts,
-        .state,
-        .lane p,
-        .alpha-note,
-        .empty {
+        .entity-id,
+        .entity-state,
+        .relation-counts {
           color: var(--secondary-text-color);
+          font-size: 12px;
         }
 
-        .entity-main span,
-        .entity-counts { font-size: 12px; }
-        .entity-counts { white-space: nowrap; }
-
-        .error {
-          margin-bottom: 16px;
-          padding: 12px 14px;
-          color: var(--error-color, #db4437);
-          background: color-mix(
-            in srgb,
-            var(--error-color, #db4437) 10%,
-            var(--card-background-color)
-          );
-          border: 1px solid var(--error-color, #db4437);
-          border-radius: 8px;
+        .relation-counts {
+          flex: 0 0 auto;
+          white-space: nowrap;
         }
 
-        .graph-empty {
-          min-height: 520px;
-          display: grid;
-          place-content: center;
-          justify-items: center;
-          gap: 8px;
-          text-align: center;
-          padding: 32px;
-        }
-
-        .graph-placeholder {
-          font-size: 72px;
-          color: var(--primary-color);
-          line-height: 1;
+        .main-card {
+          display: flex;
+          min-width: 0;
+          flex-direction: column;
+          overflow: hidden;
         }
 
         .graph-header {
           display: flex;
+          flex: 0 0 auto;
           align-items: center;
           justify-content: space-between;
-          gap: 16px;
-          padding: 16px 18px;
+          gap: 12px;
+          min-height: 64px;
+          padding: 12px 16px;
           border-bottom: 1px solid var(--divider-color);
         }
 
         .eyebrow {
-          display: block;
-          margin-bottom: 4px;
+          margin-bottom: 3px;
           color: var(--secondary-text-color);
-          font-size: 12px;
+          font-size: 11px;
+          letter-spacing: 0.08em;
           text-transform: uppercase;
-          letter-spacing: 0.06em;
         }
 
-        .graph-actions {
+        #graph-title {
+          margin: 0;
+          overflow-wrap: anywhere;
+          font-size: 18px;
+        }
+
+        .graph-header-actions {
           display: flex;
-          flex-wrap: wrap;
           align-items: center;
-          justify-content: flex-end;
-          gap: 8px;
+          gap: 10px;
+          white-space: nowrap;
         }
 
-        .graph-actions span {
+        #graph-stats {
           color: var(--secondary-text-color);
-          background: var(--secondary-background-color);
-        }
-
-        .graph-grid {
-          min-height: 480px;
-          display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: 14px;
-          padding: 16px;
-        }
-
-        .lane {
-          min-width: 0;
-          padding: 14px;
-          background: var(--secondary-background-color);
-          border: 1px solid var(--divider-color);
-          border-radius: 10px;
-        }
-
-        .lane h3 {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 8px;
-        }
-
-        .lane p {
-          min-height: 36px;
-          margin: 5px 0 12px;
           font-size: 13px;
         }
 
-        .node-list {
+        #graph-content {
+          flex: 1 1 auto;
+          min-height: 0;
+          overflow: auto;
+          padding: 14px;
+        }
+
+        .graph-columns {
           display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 12px;
+          min-height: 385px;
+        }
+
+        .graph-column {
+          min-width: 0;
+          border: 1px solid var(--divider-color);
+          border-radius: 10px;
+          padding: 12px;
+          background: var(--secondary-background-color);
+        }
+
+        .column-heading {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 10px;
+          margin-bottom: 12px;
+        }
+
+        .column-heading h3 {
+          margin: 0 0 4px;
+          font-size: 16px;
+        }
+
+        .column-heading p {
+          margin: 0;
+          color: var(--secondary-text-color);
+          font-size: 13px;
+        }
+
+        .count-badge,
+        .badge {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 999px;
+          padding: 2px 8px;
+          color: var(--primary-color);
+          background: color-mix(
+            in srgb,
+            var(--primary-color) 12%,
+            transparent
+          );
+          font-size: 12px;
+        }
+
+        .badge.warning {
+          color: var(--warning-color, #b26a00);
+        }
+
+        .badge.danger {
+          color: var(--error-color);
+        }
+
+        .node-list {
+          display: flex;
+          flex-direction: column;
           gap: 10px;
         }
 
-        .node {
-          display: grid;
+        .node-card {
+          display: flex;
+          min-width: 0;
+          flex-direction: column;
           gap: 7px;
-          padding: 12px;
-          background: var(--card-background-color);
           border: 1px solid var(--divider-color);
-          border-radius: 10px;
+          border-radius: 9px;
+          padding: 11px;
+          background: var(--card-background-color);
         }
 
-        .node.root {
-          border-color: var(--primary-color);
-          box-shadow: 0 0 0 1px var(--primary-color);
+        .node-card.broken {
+          border-color: var(--error-color);
         }
 
-        .node.broken {
-          border-style: dashed;
-          border-color: var(--warning-color, #f0a000);
-        }
-
-        .node-heading {
+        .node-labels {
           display: flex;
           flex-wrap: wrap;
           gap: 5px;
         }
 
-        .node code {
+        .node-card strong,
+        .node-card code,
+        .node-state {
           overflow-wrap: anywhere;
+        }
+
+        .node-card code,
+        .node-state {
           color: var(--secondary-text-color);
           font-size: 12px;
         }
-
-        .state { font-size: 13px; }
 
         .node-actions {
           display: flex;
           flex-wrap: wrap;
           gap: 6px;
-          margin-top: 2px;
+          margin-top: 3px;
         }
 
-        .node-actions button {
-          padding: 6px 8px;
-          font-size: 12px;
-        }
-
-        .alpha-note {
-          padding: 12px 16px;
-          border-top: 1px solid var(--divider-color);
-          font-size: 12px;
-        }
-
-        .empty {
-          padding: 20px 12px;
+        .empty,
+        .graph-empty {
+          display: flex;
+          min-height: 150px;
+          align-items: center;
+          justify-content: center;
+          flex-direction: column;
+          color: var(--secondary-text-color);
           text-align: center;
         }
 
-        .empty.compact { padding: 12px 6px; }
+        .empty.small {
+          min-height: 90px;
+        }
 
-        .loading-line {
-          height: 3px;
-          background: linear-gradient(
-            90deg,
-            transparent,
-            var(--primary-color),
+        .graph-empty {
+          min-height: 420px;
+        }
+
+        .graph-symbol {
+          font-size: 48px;
+        }
+
+        .milestone-note {
+          margin-top: 12px;
+          border-top: 1px solid var(--divider-color);
+          padding: 12px 0 0;
+          color: var(--secondary-text-color);
+          font-size: 12px;
+        }
+
+        #error {
+          margin-bottom: 12px;
+          border: 1px solid var(--error-color);
+          border-radius: 8px;
+          padding: 10px 12px;
+          color: var(--error-color);
+          background: color-mix(
+            in srgb,
+            var(--error-color) 8%,
             transparent
           );
-          background-size: 200% 100%;
-          animation: loading 1s linear infinite;
         }
 
-        @keyframes loading {
-          from { background-position: 200% 0; }
-          to { background-position: -200% 0; }
+        #error[hidden] {
+          display: none;
         }
 
-        @media (max-width: 980px) {
-          .page { padding: 12px; }
-          .workspace { grid-template-columns: 1fr; }
-          .sidebar { position: static; }
-          .entity-results { max-height: 340px; }
-          .graph-grid { grid-template-columns: 1fr; }
-          .graph-header { align-items: flex-start; flex-direction: column; }
-          .graph-actions { justify-content: flex-start; }
+        #copy-message {
+          min-height: 20px;
+          color: var(--secondary-text-color);
+          font-size: 12px;
+        }
+
+        @media (max-width: 900px) {
+          .page {
+            padding: 10px;
+          }
+
+          .layout {
+            display: flex;
+            height: auto;
+            min-height: 0;
+            flex-direction: column;
+          }
+
+          .sidebar {
+            min-height: 360px;
+            max-height: 520px;
+          }
+
+          .main-card {
+            min-height: 600px;
+          }
+
+          .graph-columns {
+            grid-template-columns: 1fr;
+          }
+
+          .graph-header {
+            align-items: flex-start;
+            flex-direction: column;
+          }
         }
       </style>
 
       <main class="page">
-        <header class="topbar">
-          <div class="title-group">
-            <h1>Entity Dependency Engine</h1>
-            <span class="badge">0.2.0 alpha</span>
-          </div>
+        <header class="page-header">
+          <h1>Entity Dependency Engine</h1>
+          <span class="badge">0.2.0 alpha.4</span>
         </header>
 
-        ${this._error ? `<div class="error">${escapeHtml(this._error)}</div>` : ""}
+        <div id="error" hidden></div>
 
-        <div class="workspace">
-          <aside class="sidebar">
-            <div class="search-wrap">
+        <div class="layout">
+          <aside class="card sidebar">
+            <section class="search-section">
               <form id="search-form">
                 <input
                   id="entity-search"
                   type="search"
                   placeholder="Search entity or friendly name"
-                  value="${escapeHtml(this._query)}"
-                  aria-label="Search entities"
+                  autocomplete="off"
+                  spellcheck="false"
+                  aria-label="Search entity or friendly name"
                 />
-                <button class="primary" type="submit">Search</button>
+                <button class="primary-button" type="submit">Search</button>
               </form>
-              <div class="sidebar-tools">
-                <span>${this._entities.length} results</span>
-                <button id="refresh-search" type="button">Rebuild index</button>
+
+              <div class="search-meta">
+                <span id="result-summary">0 entities</span>
+                <button id="refresh-search" class="text-button" type="button">
+                  Rebuild index
+                </button>
               </div>
-            </div>
-            ${this._loading ? '<div class="loading-line"></div>' : ""}
-            <div class="entity-results">${this._renderEntityResults()}</div>
+
+              <div id="search-progress" class="progress" hidden></div>
+            </section>
+
+            <div
+              id="entity-results"
+              class="entity-results"
+              tabindex="0"
+              aria-label="Entity search results"
+            ></div>
           </aside>
 
-          ${this._renderGraph()}
+          <section class="card main-card">
+            <header class="graph-header">
+              <div>
+                <div class="eyebrow">Direct dependency graph</div>
+                <h2 id="graph-title">Select an entity</h2>
+              </div>
+
+              <div class="graph-header-actions">
+                <span id="graph-stats"></span>
+                <button id="refresh-graph" type="button" disabled>
+                  Refresh graph
+                </button>
+              </div>
+            </header>
+
+            <div id="graph-progress" class="progress" hidden></div>
+            <div id="graph-content"></div>
+          </section>
         </div>
+
+        <div id="copy-message" aria-live="polite"></div>
       </main>
     `;
 
-    this._bindEvents();
+    this._renderResults();
+    this._renderGraph();
+    this._renderStatus();
   }
 }
 
