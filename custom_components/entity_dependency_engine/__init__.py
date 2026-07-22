@@ -36,6 +36,7 @@ from .runtime import (
     ReportSnapshot,
     load_report_snapshot,
 )
+from .websocket import async_register_websocket_commands
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -63,6 +64,7 @@ _GENERATE_REPORT_SCHEMA = vol.Schema(
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up Entity Dependency Engine and register its action."""
+    async_register_websocket_commands(hass)
 
     async def async_generate_report(call: ServiceCall) -> ServiceResponse:
         loaded_entries = [
