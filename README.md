@@ -215,6 +215,16 @@ cards:
 
   ```
 
+## Panelview 
+
+<img width="1914" height="878" alt="v21" src="https://github.com/user-attachments/assets/a8067e68-ea20-44c0-b472-3574510c0857" />
+
+<img width="1917" height="869" alt="v22" src="https://github.com/user-attachments/assets/4294f6fd-b708-404f-b281-c10bec144eb5" />
+
+<img width="1917" height="879" alt="v23" src="https://github.com/user-attachments/assets/33a36798-20cc-4c51-a33f-79cdcd93ef56" />
+
+<img width="1917" height="861" alt="v24" src="https://github.com/user-attachments/assets/486c3d71-47ac-4fc3-b65e-30b9781e9611" />
+
 ## Languages
 
 - English is the source language for code, logs, documentation, and UI text.
