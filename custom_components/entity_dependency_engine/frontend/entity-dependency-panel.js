@@ -43,6 +43,9 @@ class EntityDependencyEnginePanel extends HTMLElement {
     this._searchTimer = undefined;
     this._searchRequestId = 0;
     this._graphRequestId = 0;
+    this._expansionRequestId = 0;
+    this._expandingNodeId = undefined;
+    this._expandingDirection = undefined;
 
     this._navigationHistory = [];
     this._navigationIndex = -1;
@@ -179,6 +182,9 @@ class EntityDependencyEnginePanel extends HTMLElement {
 
   async _loadGraph(entityId, { refresh = false } = {}) {
     const requestId = ++this._graphRequestId;
+    this._expansionRequestId += 1;
+    this._expandingNodeId = undefined;
+    this._expandingDirection = undefined;
     this._selectedEntityId = entityId;
     this._activeNodeId = entityId;
     this._loadingGraph = true;
@@ -215,6 +221,57 @@ class EntityDependencyEnginePanel extends HTMLElement {
       }
     }
   }
+
+  async _expandNode(entityId, direction) {
+    if (
+      !this._graph ||
+      !this._selectedEntityId ||
+      this._loadingGraph ||
+      this._expandingNodeId
+    ) {
+      return;
+    }
+
+    const requestId = ++this._expansionRequestId;
+    this._expandingNodeId = entityId;
+    this._expandingDirection = direction;
+    this._error = undefined;
+    this._renderGraph();
+    this._renderStatus();
+
+    try {
+      const graph = await this._callWS({
+        type: "entity_dependency_engine/expand_node",
+        root_id: this._selectedEntityId,
+        node_id: entityId,
+        direction,
+        visible_node_ids: (this._graph.nodes ?? []).map((node) => node.id),
+        max_nodes: 250,
+        include_structural: false,
+        refresh: false,
+      });
+
+      if (requestId !== this._expansionRequestId) return;
+      this._graph = graph;
+    } catch (error) {
+      if (requestId !== this._expansionRequestId) return;
+      this._error = error?.message ?? String(error);
+    } finally {
+      if (requestId === this._expansionRequestId) {
+        this._expandingNodeId = undefined;
+        this._expandingDirection = undefined;
+        this._renderGraph();
+        this._renderStatus();
+      }
+    }
+  }
+
+  _resetExpandedView() {
+    if (this._selectedEntityId && !this._loadingGraph) {
+      this._loadGraph(this._selectedEntityId);
+    }
+  }
+
 
   _readEntityFromUrl() {
     const url = new URL(window.location.href);
@@ -425,6 +482,10 @@ class EntityDependencyEnginePanel extends HTMLElement {
       }
     });
 
+    root.querySelector("#reset-view")?.addEventListener("click", () => {
+      this._resetExpandedView();
+    });
+
     root.querySelector("#history-back")?.addEventListener("click", () => {
       this._navigateBack();
     });
@@ -443,6 +504,20 @@ class EntityDependencyEnginePanel extends HTMLElement {
     });
 
     graph?.addEventListener("click", (event) => {
+      const expandParents = event.target.closest("[data-expand-parents]");
+      if (expandParents) {
+        const entityId = expandParents.getAttribute("data-expand-parents");
+        if (entityId) this._expandNode(entityId, "parents");
+        return;
+      }
+
+      const expandChildren = event.target.closest("[data-expand-children]");
+      if (expandChildren) {
+        const entityId = expandChildren.getAttribute("data-expand-children");
+        if (entityId) this._expandNode(entityId, "children");
+        return;
+      }
+
       const focus = event.target.closest("[data-focus-entity]");
       if (focus) {
         const entityId = focus.getAttribute("data-focus-entity");
@@ -511,7 +586,7 @@ class EntityDependencyEnginePanel extends HTMLElement {
     }
 
     if (graphProgress) {
-      graphProgress.hidden = !this._loadingGraph;
+      graphProgress.hidden = !(this._loadingGraph || this._expandingNodeId);
     }
   }
 
@@ -598,6 +673,31 @@ class EntityDependencyEnginePanel extends HTMLElement {
     const active = node.id === this._activeNodeId ? " active" : "";
     const focused = node.id === this._selectedEntityId;
     const focusLabel = focused ? "Current focus" : "Focus here";
+    const expansionBusy = Boolean(this._expandingNodeId);
+    const loadingParents =
+      this._expandingNodeId === node.id &&
+      this._expandingDirection === "parents";
+    const loadingChildren =
+      this._expandingNodeId === node.id &&
+      this._expandingDirection === "children";
+    const parentsDisabled =
+      expansionBusy || !node.expandable_upstream || node.parents_loaded;
+    const childrenDisabled =
+      expansionBusy || !node.expandable_downstream || node.children_loaded;
+    const parentsLabel = loadingParents
+      ? "Loading parents…"
+      : node.parents_loaded
+        ? "Parents loaded"
+        : node.expandable_upstream
+          ? "+ Parents"
+          : "No parents";
+    const childrenLabel = loadingChildren
+      ? "Loading children…"
+      : node.children_loaded
+        ? "Children loaded"
+        : node.expandable_downstream
+          ? "+ Children"
+          : "No children";
 
     return `
       <article
@@ -620,6 +720,23 @@ class EntityDependencyEnginePanel extends HTMLElement {
             ? `<span class="node-state">${escapeHtml(state)}</span>`
             : ""
         }
+
+        <div class="expansion-actions">
+          <button
+            type="button"
+            data-expand-parents="${escapeHtml(node.id)}"
+            ${parentsDisabled ? "disabled" : ""}
+          >
+            ${parentsLabel}
+          </button>
+          <button
+            type="button"
+            data-expand-children="${escapeHtml(node.id)}"
+            ${childrenDisabled ? "disabled" : ""}
+          >
+            ${childrenLabel}
+          </button>
+        </div>
 
         <div class="node-actions">
           <button
@@ -667,10 +784,20 @@ class EntityDependencyEnginePanel extends HTMLElement {
     const graphTitle = this.shadowRoot?.querySelector("#graph-title");
     const graphStats = this.shadowRoot?.querySelector("#graph-stats");
     const refreshButton = this.shadowRoot?.querySelector("#refresh-graph");
+    const resetButton = this.shadowRoot?.querySelector("#reset-view");
 
-    if (!content || !graphTitle || !graphStats || !refreshButton) return;
+    if (
+      !content ||
+      !graphTitle ||
+      !graphStats ||
+      !refreshButton ||
+      !resetButton
+    ) return;
 
-    refreshButton.disabled = !this._selectedEntityId || this._loadingGraph;
+    refreshButton.disabled =
+      !this._selectedEntityId || this._loadingGraph || Boolean(this._expandingNodeId);
+    resetButton.disabled =
+      !this._graph?.expansion || this._loadingGraph || Boolean(this._expandingNodeId);
 
     if (this._loadingGraph && !this._graph) {
       graphTitle.textContent = this._selectedEntityId ?? "Dependency graph";
@@ -698,9 +825,28 @@ class EntityDependencyEnginePanel extends HTMLElement {
     }
 
     const nodes = this._graph.nodes ?? [];
-    const parents = nodes.filter((node) => node.roles?.includes("parent"));
     const roots = nodes.filter((node) => node.roles?.includes("root"));
-    const children = nodes.filter((node) => node.roles?.includes("child"));
+    const parents = [];
+    const children = [];
+    const related = [];
+
+    for (const node of nodes) {
+      if (node.roles?.includes("root")) continue;
+
+      const upstream =
+        node.roles?.includes("parent") || node.roles?.includes("ancestor");
+      const downstream =
+        node.roles?.includes("child") || node.roles?.includes("descendant");
+
+      if (upstream && !downstream) {
+        parents.push(node);
+      } else if (downstream && !upstream) {
+        children.push(node);
+      } else {
+        related.push(node);
+      }
+    }
+
     const statistics = this._graph.statistics ?? {};
 
     graphTitle.textContent = this._graph.root_id;
@@ -712,9 +858,9 @@ class EntityDependencyEnginePanel extends HTMLElement {
       <div class="graph-columns">
         ${this._renderNodeColumn(
           "Parents",
-          "Things the selected entity depends on.",
+          "Visible upstream dependencies.",
           parents,
-          "No direct parents.",
+          "No visible parents.",
         )}
 
         ${this._renderNodeColumn(
@@ -726,15 +872,27 @@ class EntityDependencyEnginePanel extends HTMLElement {
 
         ${this._renderNodeColumn(
           "Children",
-          "Things that depend on the selected entity.",
+          "Visible downstream dependants.",
           children,
-          "No direct children.",
+          "No visible children.",
         )}
+
+        ${
+          related.length
+            ? this._renderNodeColumn(
+                "Related",
+                "Cross-links and cycle nodes visible in the graph.",
+                related,
+                "No related nodes.",
+              )
+            : ""
+        }
       </div>
 
       <div class="milestone-note">
-        Click a node to select it. Use <strong>Focus here</strong> to make it
-        the new centre. The selected centre is stored in the panel URL.
+        Expand parents or children one step at a time without changing the
+        graph centre. Use <strong>Focus here</strong> only when you want a
+        different root.
       </div>
     `;
   }
@@ -862,6 +1020,8 @@ class EntityDependencyEnginePanel extends HTMLElement {
 
         .text-button,
         .node-actions button,
+        .expansion-actions button,
+        #reset-view,
         #refresh-graph {
           min-height: 32px;
           border: 1px solid var(--divider-color);
@@ -872,8 +1032,10 @@ class EntityDependencyEnginePanel extends HTMLElement {
         }
 
         .text-button:hover,
-        .node-actions button:hover,
-        #refresh-graph:hover {
+        .node-actions button:not(:disabled):hover,
+        .expansion-actions button:not(:disabled):hover,
+        #reset-view:not(:disabled):hover,
+        #refresh-graph:not(:disabled):hover {
           background: var(--secondary-background-color);
         }
 
@@ -1024,7 +1186,7 @@ class EntityDependencyEnginePanel extends HTMLElement {
 
         .graph-columns {
           display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
           gap: 12px;
           min-height: 385px;
         }
@@ -1119,6 +1281,7 @@ class EntityDependencyEnginePanel extends HTMLElement {
           font-size: 12px;
         }
 
+        .expansion-actions,
         .node-actions {
           display: flex;
           flex-wrap: wrap;
@@ -1269,7 +1432,7 @@ class EntityDependencyEnginePanel extends HTMLElement {
       <main class="page">
         <header class="page-header">
           <h1>Entity Dependency Engine</h1>
-          <span class="badge">0.2.0 alpha.5</span>
+          <span class="badge">0.2.0 alpha.6</span>
         </header>
 
         <div id="error" hidden></div>
@@ -1348,6 +1511,10 @@ class EntityDependencyEnginePanel extends HTMLElement {
                 >
                   Direct link
                 </a>
+
+                <button id="reset-view" type="button" disabled>
+                  Reset view
+                </button>
 
                 <button id="refresh-graph" type="button" disabled>
                   Refresh graph

@@ -23,7 +23,7 @@ def test_manifest_declares_frontend_dependency_and_alpha_version() -> None:
     )
 
     assert "frontend" in manifest["dependencies"]
-    assert manifest["version"] == "0.2.0-alpha.5"
+    assert manifest["version"] == "0.2.0-alpha.6"
 
 
 def test_panel_is_admin_only_and_uses_stable_url() -> None:
@@ -34,7 +34,7 @@ def test_panel_is_admin_only_and_uses_stable_url() -> None:
     assert "require_admin=True" in source
     assert "async_panel_exists" in source
     assert "async_remove_panel" in source
-    assert "0.2.0-alpha.5" in source
+    assert "0.2.0-alpha.6" in source
 
 
 def test_panel_is_wired_into_config_entry_lifecycle() -> None:
@@ -122,3 +122,39 @@ def test_panel_uses_home_assistant_theme_variables() -> None:
 
     for variable in required_variables:
         assert f"var({variable}" in source
+
+
+def test_panel_supports_one_step_branch_expansion() -> None:
+    source = PANEL_JS.read_text(encoding="utf-8")
+
+    assert 'type: "entity_dependency_engine/expand_node"' in source
+    assert "data-expand-parents" in source
+    assert "data-expand-children" in source
+    assert "visible_node_ids" in source
+    assert "this._expandingNodeId" in source
+    assert 'id="reset-view"' in source
+    assert "this._resetExpandedView()" in source
+
+
+def test_panel_keeps_expansion_separate_from_focus_navigation() -> None:
+    source = PANEL_JS.read_text(encoding="utf-8")
+    method = source.split("  async _expandNode", 1)[1].split(
+        "  _resetExpandedView",
+        1,
+    )[0]
+
+    assert "window.history.pushState" not in method
+    assert "this._navigateToEntity" not in method
+    assert "root_id: this._selectedEntityId" in method
+    assert "direction," in method
+    assert "visible_node_ids" in method
+
+
+def test_panel_displays_ancestors_descendants_and_cross_links() -> None:
+    source = PANEL_JS.read_text(encoding="utf-8")
+
+    assert 'node.roles?.includes("ancestor")' in source
+    assert 'node.roles?.includes("descendant")' in source
+    assert '"Related"' in source
+    assert "upstream && !downstream" in source
+    assert "downstream && !upstream" in source

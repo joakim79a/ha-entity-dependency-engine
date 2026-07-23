@@ -27,6 +27,7 @@ from .const import (
     DATA_PANEL_GRAPH_CACHE,
     DATA_WEBSOCKET_REGISTERED,
     DOMAIN,
+    WS_EXPAND_NODE,
     WS_GET_GRAPH,
     WS_SEARCH_ENTITIES,
 )
@@ -38,6 +39,10 @@ from .engine.panel_graph import (
     serialize_panel_graph,
 )
 from .engine.panel_api import PanelGraphCache, search_graph_entities
+from .engine.panel_expansion import (
+    VALID_EXPANSION_DIRECTIONS,
+    expand_panel_graph,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -54,6 +59,7 @@ def async_register_websocket_commands(hass: HomeAssistant) -> None:
     hass.data.setdefault(DATA_PANEL_GRAPH_CACHE, PanelGraphCache())
     websocket_api.async_register_command(hass, websocket_search_entities)
     websocket_api.async_register_command(hass, websocket_get_graph)
+    websocket_api.async_register_command(hass, websocket_expand_node)
     hass.data[DATA_WEBSOCKET_REGISTERED] = True
 
 
@@ -171,6 +177,87 @@ async def websocket_get_graph(
             entity_id,
         )
         connection.send_error(msg["id"], "graph_build_failed", str(err))
+        return
+
+    connection.send_result(msg["id"], payload)
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): WS_EXPAND_NODE,
+        vol.Required("root_id"): cv.entity_id,
+        vol.Required("node_id"): cv.string,
+        vol.Required("direction"): vol.In(VALID_EXPANSION_DIRECTIONS),
+        vol.Required("visible_node_ids"): vol.All(
+            [cv.string],
+            vol.Length(min=1, max=ABSOLUTE_MAX_NODES),
+        ),
+        vol.Optional("max_nodes", default=DEFAULT_MAX_NODES): vol.All(
+            vol.Coerce(int),
+            vol.Range(min=1, max=ABSOLUTE_MAX_NODES),
+        ),
+        vol.Optional("include_structural", default=False): cv.boolean,
+        vol.Optional("refresh", default=False): cv.boolean,
+    }
+)
+@websocket_api.require_admin
+@websocket_api.async_response
+async def websocket_expand_node(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    """Expand one visible graph node without changing the graph root."""
+    if not _integration_loaded(hass):
+        connection.send_error(
+            msg["id"],
+            "not_loaded",
+            "Entity Dependency Engine is not configured or loaded",
+        )
+        return
+
+    root_id = msg["root_id"]
+    node_id = msg["node_id"]
+
+    try:
+        build = await _async_get_build(
+            hass,
+            refresh=msg["refresh"],
+        )
+        missing = [
+            candidate
+            for candidate in (root_id, node_id)
+            if build.graph.get_node(candidate) is None
+        ]
+        if missing:
+            connection.send_error(
+                msg["id"],
+                websocket_api.ERR_NOT_FOUND,
+                "Graph node(s) not found: " + ", ".join(missing),
+            )
+            return
+
+        runtime_entities = _build_runtime_entities(hass, build)
+        payload = await hass.async_add_executor_job(
+            partial(
+                expand_panel_graph,
+                build.graph,
+                root_id,
+                node_id,
+                direction=msg["direction"],
+                visible_node_ids=msg["visible_node_ids"],
+                max_nodes=msg["max_nodes"],
+                include_structural=msg["include_structural"],
+                runtime_entities=runtime_entities,
+                warnings=build.warnings,
+            )
+        )
+    except (KeyError, OSError, RuntimeError, ValueError) as err:
+        _LOGGER.exception(
+            "Could not expand panel graph node %s",
+            node_id,
+        )
+        connection.send_error(msg["id"], "graph_expand_failed", str(err))
         return
 
     connection.send_result(msg["id"], payload)

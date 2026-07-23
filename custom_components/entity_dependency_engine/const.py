@@ -17,6 +17,7 @@ SUPPORTED_LANGUAGES = {"en", "sv"}
 
 WS_SEARCH_ENTITIES = "entity_dependency_engine/search_entities"
 WS_GET_GRAPH = "entity_dependency_engine/get_graph"
+WS_EXPAND_NODE = "entity_dependency_engine/expand_node"
 
 DATA_PANEL_GRAPH_CACHE = "entity_dependency_engine_panel_graph_cache"
 DATA_WEBSOCKET_REGISTERED = "entity_dependency_engine_websocket_registered"
