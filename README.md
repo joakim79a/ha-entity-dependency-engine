@@ -1,4 +1,4 @@
-﻿# Entity Dependency Engine
+# Entity Dependency Engine
 
 [![Validate](https://github.com/joakim79a/ha-entity-dependency-engine/actions/workflows/validate.yml/badge.svg)](https://github.com/joakim79a/ha-entity-dependency-engine/actions/workflows/validate.yml)
 [![Release](https://img.shields.io/github/v/release/joakim79a/ha-entity-dependency-engine?include_prereleases)](https://github.com/joakim79a/ha-entity-dependency-engine/releases)

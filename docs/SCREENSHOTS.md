@@ -1,4 +1,4 @@
-﻿# Screenshot preparation
+# Screenshot preparation
 
 Add these files before running the final release tests:
 

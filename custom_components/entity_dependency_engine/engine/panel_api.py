@@ -1,4 +1,4 @@
-﻿"""Pure backend helpers for the visual dependency panel."""
+"""Pure backend helpers for the visual dependency panel."""
 
 from __future__ import annotations
 

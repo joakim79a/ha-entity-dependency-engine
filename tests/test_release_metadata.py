@@ -1,4 +1,4 @@
-﻿"""Validate release-candidate metadata and documentation."""
+"""Validate release-candidate metadata and documentation."""
 
 from __future__ import annotations
 
