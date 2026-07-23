@@ -1,4 +1,6 @@
 const PANEL_TAG = "ha-panel-entity-dependency-engine";
+const ENTITY_QUERY_PARAMETER = "entity";
+const HISTORY_STATE_KEY = "entityDependencyEngine";
 
 const escapeHtml = (value) =>
   String(value ?? "")
@@ -32,6 +34,7 @@ class EntityDependencyEnginePanel extends HTMLElement {
     this._entityTotal = 0;
     this._graph = undefined;
     this._selectedEntityId = undefined;
+    this._activeNodeId = undefined;
 
     this._loadingSearch = false;
     this._loadingGraph = false;
@@ -41,8 +44,14 @@ class EntityDependencyEnginePanel extends HTMLElement {
     this._searchRequestId = 0;
     this._graphRequestId = 0;
 
+    this._navigationHistory = [];
+    this._navigationIndex = -1;
+
     this._rendered = false;
     this._initialized = false;
+    this._popStateListening = false;
+
+    this._boundPopState = (event) => this._handlePopState(event);
   }
 
   set hass(value) {
@@ -74,11 +83,21 @@ class EntityDependencyEnginePanel extends HTMLElement {
       this._rendered = true;
     }
 
+    if (!this._popStateListening) {
+      window.addEventListener("popstate", this._boundPopState);
+      this._popStateListening = true;
+    }
+
     this._initializeWhenReady();
   }
 
   disconnectedCallback() {
     window.clearTimeout(this._searchTimer);
+
+    if (this._popStateListening) {
+      window.removeEventListener("popstate", this._boundPopState);
+      this._popStateListening = false;
+    }
   }
 
   _initializeWhenReady() {
@@ -89,8 +108,28 @@ class EntityDependencyEnginePanel extends HTMLElement {
       this._rendered
     ) {
       this._initialized = true;
-      queueMicrotask(() => this._searchEntities());
+      queueMicrotask(() => this._initializePanel());
     }
+  }
+
+  async _initializePanel() {
+    const entityId = this._readEntityFromUrl();
+
+    if (entityId) {
+      this._navigationHistory = [entityId];
+      this._navigationIndex = 0;
+      this._replaceBrowserState(entityId, 0);
+
+      await Promise.all([
+        this._searchEntities(),
+        this._loadGraph(entityId),
+      ]);
+      return;
+    }
+
+    this._replaceBrowserState(undefined, -1);
+    this._renderNavigation();
+    await this._searchEntities();
   }
 
   async _callWS(message) {
@@ -141,11 +180,13 @@ class EntityDependencyEnginePanel extends HTMLElement {
   async _loadGraph(entityId, { refresh = false } = {}) {
     const requestId = ++this._graphRequestId;
     this._selectedEntityId = entityId;
+    this._activeNodeId = entityId;
     this._loadingGraph = true;
     this._error = undefined;
 
     this._renderResults();
     this._renderGraph();
+    this._renderNavigation();
     this._renderStatus();
 
     try {
@@ -169,9 +210,148 @@ class EntityDependencyEnginePanel extends HTMLElement {
       if (requestId === this._graphRequestId) {
         this._loadingGraph = false;
         this._renderGraph();
+        this._renderNavigation();
         this._renderStatus();
       }
     }
+  }
+
+  _readEntityFromUrl() {
+    const url = new URL(window.location.href);
+    const value = url.searchParams.get(ENTITY_QUERY_PARAMETER);
+    return value?.trim() || undefined;
+  }
+
+  _buildPanelUrl(entityId) {
+    const url = new URL(window.location.href);
+
+    if (entityId) {
+      url.searchParams.set(ENTITY_QUERY_PARAMETER, entityId);
+    } else {
+      url.searchParams.delete(ENTITY_QUERY_PARAMETER);
+    }
+
+    return `${url.pathname}${url.search}${url.hash}`;
+  }
+
+  _historyState(entityId, index) {
+    return {
+      ...(window.history.state ?? {}),
+      [HISTORY_STATE_KEY]: {
+        entityId: entityId ?? null,
+        index,
+      },
+    };
+  }
+
+  _replaceBrowserState(entityId, index) {
+    window.history.replaceState(
+      this._historyState(entityId, index),
+      "",
+      this._buildPanelUrl(entityId),
+    );
+  }
+
+  _pushBrowserState(entityId, index) {
+    window.history.pushState(
+      this._historyState(entityId, index),
+      "",
+      this._buildPanelUrl(entityId),
+    );
+  }
+
+  _navigateToEntity(entityId, { replace = false } = {}) {
+    if (!entityId) return;
+
+    if (
+      entityId === this._selectedEntityId &&
+      this._graph &&
+      !replace
+    ) {
+      this._activeNodeId = entityId;
+      this._renderGraph();
+      return;
+    }
+
+    if (replace) {
+      if (this._navigationIndex < 0) {
+        this._navigationHistory = [entityId];
+        this._navigationIndex = 0;
+      } else {
+        this._navigationHistory[this._navigationIndex] = entityId;
+      }
+
+      this._replaceBrowserState(entityId, this._navigationIndex);
+    } else {
+      this._navigationHistory = this._navigationHistory.slice(
+        0,
+        this._navigationIndex + 1,
+      );
+      this._navigationHistory.push(entityId);
+      this._navigationIndex += 1;
+      this._pushBrowserState(entityId, this._navigationIndex);
+    }
+
+    this._loadGraph(entityId);
+  }
+
+  _handlePopState(event) {
+    const panelState = event.state?.[HISTORY_STATE_KEY];
+    const entityId = panelState?.entityId || this._readEntityFromUrl();
+
+    if (!entityId) {
+      this._selectedEntityId = undefined;
+      this._activeNodeId = undefined;
+      this._graph = undefined;
+      this._navigationIndex = -1;
+      this._renderResults();
+      this._renderGraph();
+      this._renderNavigation();
+      return;
+    }
+
+    const stateIndex = Number(panelState?.index);
+
+    if (
+      Number.isInteger(stateIndex) &&
+      stateIndex >= 0 &&
+      stateIndex < this._navigationHistory.length &&
+      this._navigationHistory[stateIndex] === entityId
+    ) {
+      this._navigationIndex = stateIndex;
+    } else {
+      const knownIndex = this._navigationHistory.lastIndexOf(entityId);
+
+      if (knownIndex >= 0) {
+        this._navigationIndex = knownIndex;
+      } else {
+        this._navigationHistory = [entityId];
+        this._navigationIndex = 0;
+      }
+    }
+
+    this._loadGraph(entityId);
+  }
+
+  _navigateBack() {
+    if (this._navigationIndex > 0) {
+      window.history.back();
+    }
+  }
+
+  _navigateForward() {
+    if (
+      this._navigationIndex >= 0 &&
+      this._navigationIndex < this._navigationHistory.length - 1
+    ) {
+      window.history.forward();
+    }
+  }
+
+  _selectNode(entityId) {
+    if (!entityId) return;
+    this._activeNodeId = entityId;
+    this._renderGraph();
   }
 
   _openMoreInfo(entityId) {
@@ -245,16 +425,31 @@ class EntityDependencyEnginePanel extends HTMLElement {
       }
     });
 
+    root.querySelector("#history-back")?.addEventListener("click", () => {
+      this._navigateBack();
+    });
+
+    root.querySelector("#history-forward")?.addEventListener("click", () => {
+      this._navigateForward();
+    });
+
     results?.addEventListener("click", (event) => {
       const target = event.target.closest("[data-select-entity]");
       const entityId = target?.getAttribute("data-select-entity");
 
       if (entityId) {
-        this._loadGraph(entityId);
+        this._navigateToEntity(entityId);
       }
     });
 
     graph?.addEventListener("click", (event) => {
+      const focus = event.target.closest("[data-focus-entity]");
+      if (focus) {
+        const entityId = focus.getAttribute("data-focus-entity");
+        if (entityId) this._navigateToEntity(entityId);
+        return;
+      }
+
       const moreInfo = event.target.closest("[data-more-info]");
       if (moreInfo) {
         const entityId = moreInfo.getAttribute("data-more-info");
@@ -266,7 +461,23 @@ class EntityDependencyEnginePanel extends HTMLElement {
       if (copy) {
         const entityId = copy.getAttribute("data-copy-entity");
         if (entityId) this._copyEntityId(entityId);
+        return;
       }
+
+      const node = event.target.closest("[data-node-id]");
+      if (node) {
+        this._selectNode(node.getAttribute("data-node-id"));
+      }
+    });
+
+    graph?.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+
+      const node = event.target.closest("[data-node-id]");
+      if (!node) return;
+
+      event.preventDefault();
+      this._selectNode(node.getAttribute("data-node-id"));
     });
   }
 
@@ -301,6 +512,29 @@ class EntityDependencyEnginePanel extends HTMLElement {
 
     if (graphProgress) {
       graphProgress.hidden = !this._loadingGraph;
+    }
+  }
+
+  _renderNavigation() {
+    const back = this.shadowRoot?.querySelector("#history-back");
+    const forward = this.shadowRoot?.querySelector("#history-forward");
+    const link = this.shadowRoot?.querySelector("#direct-link");
+
+    if (back) {
+      back.disabled = this._navigationIndex <= 0;
+    }
+
+    if (forward) {
+      forward.disabled =
+        this._navigationIndex < 0 ||
+        this._navigationIndex >= this._navigationHistory.length - 1;
+    }
+
+    if (link) {
+      link.hidden = !this._selectedEntityId;
+      link.href = this._selectedEntityId
+        ? this._buildPanelUrl(this._selectedEntityId)
+        : "";
     }
   }
 
@@ -361,20 +595,40 @@ class EntityDependencyEnginePanel extends HTMLElement {
   _renderNode(node) {
     const state = node.runtime?.state_display ?? node.runtime?.state;
     const role = escapeHtml(roleLabel(node.roles));
+    const active = node.id === this._activeNodeId ? " active" : "";
+    const focused = node.id === this._selectedEntityId;
+    const focusLabel = focused ? "Current focus" : "Focus here";
 
     return `
-      <article class="node-card ${node.broken ? "broken" : ""}">
+      <article
+        class="node-card${active} ${node.broken ? "broken" : ""}"
+        data-node-id="${escapeHtml(node.id)}"
+        tabindex="0"
+        aria-label="${escapeHtml(node.display_name || node.id)}"
+      >
         <div class="node-labels">
           <span class="badge">${role}</span>
           ${node.in_cycle ? '<span class="badge warning">Cycle</span>' : ""}
           ${node.broken ? '<span class="badge danger">Broken</span>' : ""}
+          ${active ? '<span class="badge selected-badge">Selected</span>' : ""}
         </div>
 
         <strong>${escapeHtml(node.display_name || node.id)}</strong>
         <code>${escapeHtml(node.id)}</code>
-        ${state != null ? `<span class="node-state">${escapeHtml(state)}</span>` : ""}
+        ${
+          state != null
+            ? `<span class="node-state">${escapeHtml(state)}</span>`
+            : ""
+        }
 
         <div class="node-actions">
+          <button
+            type="button"
+            data-focus-entity="${escapeHtml(node.id)}"
+            ${focused ? "disabled" : ""}
+          >
+            ${focusLabel}
+          </button>
           <button type="button" data-more-info="${escapeHtml(node.id)}">
             More info
           </button>
@@ -479,8 +733,8 @@ class EntityDependencyEnginePanel extends HTMLElement {
       </div>
 
       <div class="milestone-note">
-        Interactive zoom, pan, branch expansion, and full graph layout arrive
-        in the next frontend milestone.
+        Click a node to select it. Use <strong>Focus here</strong> to make it
+        the new centre. The selected centre is stored in the panel URL.
       </div>
     `;
   }
@@ -926,6 +1180,60 @@ class EntityDependencyEnginePanel extends HTMLElement {
           font-size: 12px;
         }
 
+
+        button:disabled {
+          opacity: 0.45;
+          cursor: default;
+        }
+
+        .navigation-controls {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+        }
+
+        .navigation-button {
+          min-width: 34px;
+        }
+
+        #direct-link {
+          color: var(--primary-color);
+          font-size: 13px;
+          text-decoration: none;
+        }
+
+        #direct-link[hidden] {
+          display: none;
+        }
+
+        .selected-badge {
+          color: var(--primary-text-color);
+          background: color-mix(
+            in srgb,
+            var(--primary-color) 22%,
+            transparent
+          );
+        }
+
+        .node-card {
+          outline: none;
+          cursor: pointer;
+        }
+
+        .node-card:hover,
+        .node-card:focus-visible {
+          border-color: var(--primary-color);
+        }
+
+        .node-card.active {
+          border-color: var(--primary-color);
+          box-shadow: 0 0 0 2px color-mix(
+            in srgb,
+            var(--primary-color) 18%,
+            transparent
+          );
+        }
+
         @media (max-width: 900px) {
           .page {
             padding: 10px;
@@ -961,7 +1269,7 @@ class EntityDependencyEnginePanel extends HTMLElement {
       <main class="page">
         <header class="page-header">
           <h1>Entity Dependency Engine</h1>
-          <span class="badge">0.2.0 alpha.4</span>
+          <span class="badge">0.2.0 alpha.5</span>
         </header>
 
         <div id="error" hidden></div>
@@ -1007,7 +1315,40 @@ class EntityDependencyEnginePanel extends HTMLElement {
               </div>
 
               <div class="graph-header-actions">
+                <div class="navigation-controls">
+                  <button
+                    id="history-back"
+                    class="navigation-button"
+                    type="button"
+                    title="Previous graph"
+                    aria-label="Previous graph"
+                    disabled
+                  >
+                    ←
+                  </button>
+                  <button
+                    id="history-forward"
+                    class="navigation-button"
+                    type="button"
+                    title="Next graph"
+                    aria-label="Next graph"
+                    disabled
+                  >
+                    →
+                  </button>
+                </div>
+
                 <span id="graph-stats"></span>
+
+                <a
+                  id="direct-link"
+                  href=""
+                  title="Direct link to this graph"
+                  hidden
+                >
+                  Direct link
+                </a>
+
                 <button id="refresh-graph" type="button" disabled>
                   Refresh graph
                 </button>
@@ -1025,6 +1366,7 @@ class EntityDependencyEnginePanel extends HTMLElement {
 
     this._renderResults();
     this._renderGraph();
+    this._renderNavigation();
     this._renderStatus();
   }
 }
