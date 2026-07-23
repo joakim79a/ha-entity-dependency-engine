@@ -1,4 +1,4 @@
-"""Protect the alpha runtime wiring."""
+"""Protect the integration runtime wiring."""
 
 from __future__ import annotations
 
@@ -10,12 +10,12 @@ ROOT = Path(__file__).resolve().parents[1]
 INTEGRATION = ROOT / "custom_components" / "entity_dependency_engine"
 
 
-def test_alpha_manifest_version() -> None:
+def test_release_manifest_version() -> None:
     manifest = json.loads(
         (INTEGRATION / "manifest.json").read_text(encoding="utf-8")
     )
 
-    assert manifest["version"] == "0.2.0-alpha.7"
+    assert manifest["version"] == "0.2.0-rc.1"
 
 
 def test_websocket_commands_are_registered_once() -> None:

@@ -7,10 +7,12 @@ on:
     - cron: "0 0 * * *"
   workflow_dispatch:
 
-permissions: {}
+permissions:
+  contents: read
 
 jobs:
-  validate-hacs:
+  hacs:
+    name: HACS
     runs-on: ubuntu-latest
     steps:
       - name: HACS validation
@@ -18,18 +20,36 @@ jobs:
         with:
           category: integration
 
-  validate-hassfest:
+  hassfest:
+    name: Hassfest
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: home-assistant/actions/hassfest@master
+      - name: Hassfest validation
+        uses: home-assistant/actions/hassfest@master
 
-  unit-tests:
+  tests:
+    name: Python tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
+          cache: pip
       - run: pip install -r requirements-test.txt
       - run: pytest
+
+  frontend:
+    name: Frontend syntax
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: |
+          cp custom_components/entity_dependency_engine/frontend/entity-dependency-layout.js /tmp/layout.mjs
+          cp custom_components/entity_dependency_engine/frontend/entity-dependency-panel.js /tmp/panel.mjs
+          node --check /tmp/layout.mjs
+          node --check /tmp/panel.mjs

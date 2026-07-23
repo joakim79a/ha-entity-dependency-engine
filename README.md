@@ -1,77 +1,62 @@
-# Entity Dependency Engine
+﻿# Entity Dependency Engine
 
-Entity Dependency Engine is a read-only Home Assistant custom integration
-that builds a directed dependency graph for a selected entity.
+[![Validate](https://github.com/joakim79a/ha-entity-dependency-engine/actions/workflows/validate.yml/badge.svg)](https://github.com/joakim79a/ha-entity-dependency-engine/actions/workflows/validate.yml)
+[![Release](https://img.shields.io/github/v/release/joakim79a/ha-entity-dependency-engine?include_prereleases)](https://github.com/joakim79a/ha-entity-dependency-engine/releases)
+[![License](https://img.shields.io/github/license/joakim79a/ha-entity-dependency-engine)](LICENSE)
 
-It can trace direct and recursive upstream and downstream relationships
-before you rename, disable, replace, or remove an entity.
+Entity Dependency Engine is a read-only Home Assistant custom integration for exploring and reporting entity dependencies before you rename, disable, replace, or remove an entity.
 
-> Project status: version 0.1.0 is the first public release. Installation
-> through HACS, integration removal and re-creation, report generation,
-> sensor updates, and dashboard output have been tested on the maintainer's
-> Home Assistant installation.
+> **Release candidate:** `v0.2.0-rc.1` is intended for final upgrade and clean-install validation before stable `v0.2.0`.
 
-## Current capabilities
+## Highlights
 
-The engine currently analyses:
+- Administrator-only Home Assistant sidebar panel
+- Entity search with server-side filtering
+- Vertical dependency graph with parents above and children below the root
+- One-step parent and child expansion
+- Navigation history, direct links, root centering, and view reset
+- Cycle and broken-reference indicators
+- Recursive reports in English or Swedish
+- Backward-compatible report action and latest-report sensor
+- Private report storage by default
 
-- Home Assistant entity, device, and config-entry registries
-- GUI-created template entities
-- Utility Meter helpers
-- Derivative helpers
-- Min/Max helpers
-- History Stats helpers
-- Integration helpers
-- Threshold helpers
-- Groups
-- Switch-as-X helpers
-- Automations and scripts
-- Direct parents and children
-- Recursive ancestors and descendants
-- Broken or unresolved entity references
-- Structural relations to devices and config entries
+## Screenshots
+
+![Dependency graph](docs/images/panel-overview.jpg)
+
+![Expanded dependency graph](docs/images/panel-expanded-tree.jpg)
+
+![Entity search](docs/images/panel-search.jpg)
+
+### Additional panel view
+
+![Additional dependency graph view](docs/images/panel-details.jpg)
+
+## Requirements
+
+- Home Assistant `2026.6.0` or newer
+- HACS for the recommended installation method
+- An administrator account for the sidebar panel
 
 ## Installation with HACS
 
-Entity Dependency Engine is currently installed as a custom HACS repository.
+1. Open HACS.
+2. Open **Custom repositories**.
+3. Add `https://github.com/joakim79a/ha-entity-dependency-engine` as an **Integration**.
+4. Search for **Entity Dependency Engine** and download it.
+5. Restart Home Assistant.
+6. Open **Settings > Devices & services > Add integration**.
+7. Add **Entity Dependency Engine**.
 
-1. Open HACS in Home Assistant.
-2. Open the menu in the upper-right corner.
-3. Select **Custom repositories**.
-4. Add:
+For release-candidate testing, enable prereleases for this repository and install `v0.2.0-rc.1`.
 
-   ```text
-   https://github.com/joakim79a/ha-entity-dependency-engine
-   ```
+## Sidebar panel
 
-5. Select **Integration** as the repository type.
-6. Search for **Entity Dependency Engine** in HACS.
-7. Download the integration.
-8. Restart Home Assistant.
-9. Open **Settings > Devices & services > Add integration**.
-10. Search for **Entity Dependency Engine** and add it.
+The panel lets administrators search entities, inspect a vertical dependency graph, expand branches, select nodes, use **Focus here**, navigate between previous roots, copy a direct URL, center the root, reset the view, and open Home Assistant's more-info dialog.
 
-## Manual installation
-
-1. Copy:
-
-   ```text
-   custom_components/entity_dependency_engine
-   ```
-
-   to:
-
-   ```text
-   /config/custom_components/entity_dependency_engine
-   ```
-
-2. Restart Home Assistant.
-3. Open **Settings > Devices & services > Add integration**.
-4. Search for **Entity Dependency Engine** and add it.
+The panel is read-only and does not modify Home Assistant entities or configuration.
 
 ## Generate a report
-
-Call the Home Assistant action:
 
 ```yaml
 action: entity_dependency_engine.generate_report
@@ -83,181 +68,59 @@ data:
 response_variable: dependency_report
 ```
 
-Available options:
-
 | Option | Description |
 |---|---|
 | `entity_id` | Entity to analyse |
-| `language` | Report language: `en` or `sv` |
+| `language` | `en` or `sv` |
 | `include_structural` | Include device and config-entry relations |
-| `save_public_copy` | Also save report files below `/config/www` |
-| `max_depth` | Optional maximum recursive graph depth |
+| `save_public_copy` | Also save files below `/config/www` |
+| `max_depth` | Optional recursive depth limit |
 
-The action returns counts, a summary, file paths, and the readable report
-when a response is requested.
+The action also updates `sensor.entity_dependency_engine_last_report`.
 
-It also updates:
+## Report storage
 
-```text
-sensor.entity_dependency_engine_last_report
-```
-
-The sensor state is the report generation timestamp. The complete readable
-report is available in the sensor's `report` attribute.
-
-## Private report storage
-
-Reports are always stored privately under:
+Private reports:
 
 ```text
 /config/entity_dependency_engine/reports/
 ```
 
-## Public report links
-
-Setting:
-
-```yaml
-save_public_copy: true
-```
-
-also writes report files below:
+Optional public copies:
 
 ```text
 /config/www/entity_dependency_engine/
-```
-
-and returns URLs below:
-
-```text
 /local/entity_dependency_engine/
 ```
 
-This is disabled by default. Clients that can reach your Home Assistant
-server may also be able to retrieve files exposed through `/local`.
+Public copies are disabled by default. Reports can contain sensitive names and configuration details.
 
-Dependency reports may contain sensitive entity names and configuration
-information. Only enable public copies when you understand that trade-off.
+## Compatibility with v0.1.0
 
-## script example (sv)
-```yaml
-alias: "System: Analysera entitetsrelationer"
-description: Bygger beroendegrafen för en vald entitet och sparar rapporten.
-icon: mdi:file-tree
-mode: single
-fields:
-  target_entity:
-    name: Entitet
-    description: Välj den entitet vars relationer ska analyseras.
-    required: true
-    selector:
-      entity: {}
-sequence:
-  - action: entity_dependency_engine.generate_report
-    data:
-      entity_id: "{{ target_entity }}"
-      language: sv
-      include_structural: false
-      save_public_copy: true
-    response_variable: dependency_result
-  - action: persistent_notification.create
-    data:
-      notification_id: entity_dependency_report
-      title: "Entitetsrapport: {{ target_entity }}"
-      message: >-
-        {{ dependency_result.summary }}
+Version v0.2.0 is designed as an additive upgrade. These remain compatible:
 
-        Föräldrar: {{ dependency_result.parents }} Barn: {{
-        dependency_result.children }} Förfäder: {{ dependency_result.ancestors
-        }} Ättlingar: {{ dependency_result.descendants }}
+- `entity_dependency_engine.generate_report`
+- `sensor.entity_dependency_engine_last_report`
+- existing config entries, scripts, automations, and dashboards
+- private and optional public report paths
+- English and Swedish reports
 
-        Brutna referenser: {{ dependency_result.broken }} Build-varningar: {{
-        dependency_result.build_warnings }}
-
-        [Öppna rapporten]({{ dependency_result.url }})
-
-        [Öppna debugrapporten]({{ dependency_result.debug_url }})
-
-        Skapad: {{ dependency_result.generated }}
-  ```
-
-## Dashboard example (sv)
-
-```yaml
-type: vertical-stack
-cards:
-  - type: button
-    entity: script.system_analysera_entitetsrelationer
-    name: Analysera entitet
-    icon: mdi:file-tree
-    show_state: false
-    tap_action:
-      action: more-info
-    hold_action:
-      action: more-info
-  - type: markdown
-    title: Senaste entitetsrapport
-    content: |-
-      {% set report = state_attr(
-        'sensor.entity_dependency_engine_last_report',
-        'report'
-      ) %}
-
-      {% if report %}
-      ```text
-      {{ report }}
-      ```
-      {% else %}
-      Ingen rapport har skapats ännu.
-
-      Tryck på **Analysera entitet** ovan.
-      {% endif %}
-
-  ```
-
-## Panelview 
-
-<img width="1914" height="878" alt="v21" src="https://github.com/user-attachments/assets/a8067e68-ea20-44c0-b472-3574510c0857" />
-
-<img width="1917" height="869" alt="v22" src="https://github.com/user-attachments/assets/4294f6fd-b708-404f-b281-c10bec144eb5" />
-
-<img width="1917" height="879" alt="v23" src="https://github.com/user-attachments/assets/33a36798-20cc-4c51-a33f-79cdcd93ef56" />
-
-<img width="1917" height="861" alt="v24" src="https://github.com/user-attachments/assets/486c3d71-47ac-4fc3-b65e-30b9781e9611" />
+No manual migration is expected. See [Upgrading](docs/UPGRADING.md).
 
 ## Languages
 
-- English is the source language for code, logs, documentation, and UI text.
-- Swedish UI translations are included.
-- Readable reports can be generated in English or Swedish.
-- When no report language is supplied, the Home Assistant language is used
-  when supported. Otherwise English is used.
+English is used for code, logs, GitHub documentation, and panel text. Swedish Home Assistant translations and Swedish reports are included.
 
-## Reporting issues
+## Issues and security
 
-Open an issue in the GitHub repository and include:
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening an issue and [SECURITY.md](SECURITY.md) before reporting a vulnerability. Remove private names, addresses, tokens, locations, and sensitive configuration from logs and screenshots.
 
-- Home Assistant version
-- Entity Dependency Engine version
-- The entity type being analysed
-- Relevant Home Assistant log messages
-- A description of the expected and actual result
-
-Avoid publishing reports containing private entity names, device names,
-addresses, tokens, or other sensitive configuration information.
-
-## Support the project
-
-Entity Dependency Engine is free and open source.
-
-If you find the integration useful, you can support its continued
-development:
+## Support
 
 [Buy me a coffee](https://buymeacoffee.com/joakim79a)
-
-Support is entirely optional and does not affect access to features,
-support, or updates.
 
 ## License
 
 MIT
+
+

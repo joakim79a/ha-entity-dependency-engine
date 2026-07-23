@@ -1,46 +1,53 @@
 # Changelog
 
-## 0.1.0 - 2026-07-17
+All notable changes are documented here. The project follows semantic versioning for Home Assistant releases.
 
-First public release.
+## [Unreleased]
 
-- Added installation through HACS as a custom repository.
-- Added a single-instance Home Assistant config flow.
-- Added the `entity_dependency_engine.generate_report` action.
-- Added the native push-updated
-  `sensor.entity_dependency_engine_last_report` entity.
-- Added recursive dependency analysis for parents, children, ancestors,
-  and descendants.
-- Added support for entity, device, and config-entry registries.
-- Added parsers for GUI templates, Utility Meter, Derivative, Min/Max,
-  History Stats, Integration, Threshold, Group, and Switch-as-X helpers.
-- Added automation and script reference analysis.
-- Added broken and unresolved reference reporting.
-- Added English and Swedish UI translations.
-- Added readable reports in English and Swedish.
-- Added private report storage.
-- Added optional public report copies through `/local`.
-- Added restoration of the latest private report after Home Assistant restarts.
-- Added HACS, Hassfest, and unit-test validation through GitHub Actions.
-- Added project funding through Buy Me a Coffee.
+### Planned
 
-## 0.1.0-dev.2 - 2026-07-17
+- Promote the validated release candidate to stable v0.2.0.
+- Add a user-configurable report storage location while preserving the current default.
 
-- Added the native push-updated
-  `sensor.entity_dependency_engine_last_report` entity.
-- Exposed the readable report in the sensor's `report` attribute.
-- Restored the latest private report from disk when the integration loads.
-- Added report counts, summary, file paths, and optional public URLs as
-  sensor attributes.
-- Excluded the large `report` attribute from recorder history.
-- Added proper config-entry platform forwarding and unloading.
+## [0.2.0-rc.1] - 2026-07-23
 
-## 0.1.0-dev.1 - 2026-07-16
+### Added
 
-- Migrated the working prototype into a Home Assistant custom integration.
-- Added a single-instance config flow.
-- Added the `entity_dependency_engine.generate_report` action.
-- Added English and Swedish UI translations.
-- Added localized English and Swedish readable reports.
-- Added private report storage and optional `/local` report copies.
-- Preserved and migrated the existing parser and graph test suite.
+- Administrator-only Home Assistant sidebar panel.
+- Entity search with total-result counts.
+- Vertical layered dependency graph.
+- Parents and ancestors above the root; children and descendants below it.
+- One-step parent and child expansion.
+- Root focus, node selection, history, direct URLs, centering, and view reset.
+- Vertical and horizontal graph scrolling.
+- Directional SVG relation lines.
+- Cycle and broken-reference presentation.
+- Admin-protected WebSocket commands for search, graph retrieval, and expansion.
+- Frontend, API, expansion, layout, and v0.1 compatibility tests.
+
+### Changed
+
+- Replaced the early three-column panel with a vertical layered graph.
+- Improved search focus, result scrolling, and stale-response handling.
+- Split graph layout into a separate frontend module.
+- Expanded English GitHub and release documentation.
+
+### Compatibility
+
+- Preserved `entity_dependency_engine.generate_report`.
+- Preserved `sensor.entity_dependency_engine_last_report`.
+- Preserved report paths, optional `/local` URLs, config entries, scripts, dashboards, and report languages.
+- No manual migration is expected from v0.1.0.
+
+## [0.1.0] - 2026-07-17
+
+### Added
+
+- First public HACS release.
+- Config flow, report action, and latest-report sensor.
+- Recursive dependency analysis and helper parsers.
+- Automation and script reference analysis.
+- Broken-reference reporting.
+- English and Swedish translations and reports.
+- Private reports and optional public copies.
+- HACS, Hassfest, and unit-test validation.

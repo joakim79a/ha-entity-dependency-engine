@@ -1,6 +1,6 @@
 # Panel layered-layout contract
 
-Version: `0.2.0-alpha.7`
+Version: `0.2.0-rc.1`
 
 The panel renders the visible dependency graph as vertical layers.
 
