@@ -25,7 +25,7 @@ def test_manifest_declares_frontend_dependency_and_alpha_version() -> None:
     )
 
     assert "frontend" in manifest["dependencies"]
-    assert manifest["version"] == "0.2.0-rc.1"
+    assert manifest["version"] == "0.2.0"
 
 
 def test_panel_is_admin_only_and_uses_stable_url() -> None:
@@ -36,7 +36,7 @@ def test_panel_is_admin_only_and_uses_stable_url() -> None:
     assert "require_admin=True" in source
     assert "async_panel_exists" in source
     assert "async_remove_panel" in source
-    assert "0.2.0-rc.1" in source
+    assert "0.2.0" in source
 
 
 def test_panel_is_wired_into_config_entry_lifecycle() -> None:
@@ -70,7 +70,7 @@ def test_panel_uses_separate_layered_layout_module() -> None:
     panel_source = PANEL_JS.read_text(encoding="utf-8")
     layout_source = LAYOUT_JS.read_text(encoding="utf-8")
 
-    assert 'from "./entity-dependency-layout.js?v=0.2.0-rc.1"' in (
+    assert 'from "./entity-dependency-layout.js?v=0.2.0"' in (
         panel_source
     )
     assert "export const buildLayeredLayout" in layout_source

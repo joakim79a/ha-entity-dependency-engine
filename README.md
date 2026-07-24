@@ -6,7 +6,7 @@
 
 Entity Dependency Engine is a read-only Home Assistant custom integration for exploring and reporting entity dependencies before you rename, disable, replace, or remove an entity.
 
-> **Release candidate:** `v0.2.0-rc.1` is intended for final upgrade and clean-install validation before stable `v0.2.0`.
+> **Stable release:** `v0.2.0` adds the dependency explorer panel while preserving the v0.1.0 report workflow.
 
 ## Highlights
 
@@ -48,7 +48,7 @@ Entity Dependency Engine is a read-only Home Assistant custom integration for ex
 6. Open **Settings > Devices & services > Add integration**.
 7. Add **Entity Dependency Engine**.
 
-For release-candidate testing, enable prereleases for this repository and install `v0.2.0-rc.1`.
+Install the latest stable release through HACS.
 
 ## Sidebar panel
 

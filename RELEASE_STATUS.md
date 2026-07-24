@@ -1,15 +1,16 @@
 # Release status
 
-## v0.2.0-rc.1
+## v0.2.0
 
-The feature set is frozen. Only documentation, release metadata, validation, and release-blocking bug fixes are allowed before stable v0.2.0.
+The release candidate has passed upgrade, clean-install, compatibility,
+and repository validation.
+
+The stable code is frozen. Only release-blocking fixes are allowed before
+publication.
 
 Remaining work:
 
-1. Add privacy-reviewed screenshots.
-2. Merge the release-candidate pull request.
-3. Publish a full GitHub prerelease named `v0.2.0-rc.1`.
-4. Test a HACS upgrade from v0.1.0.
-5. Test a clean HACS installation.
-6. Confirm panel, report, sensor, script, and dashboard compatibility.
-7. Promote the validated code to stable v0.2.0.
+1. Merge the stable release pull request into `main`.
+2. Create tag `v0.2.0` from the merge commit.
+3. Publish the full GitHub release.
+4. Confirm that HACS offers the stable update.

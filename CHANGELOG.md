@@ -6,8 +6,30 @@ All notable changes are documented here. The project follows semantic versioning
 
 ### Planned
 
-- Promote the validated release candidate to stable v0.2.0.
 - Add a user-configurable report storage location while preserving the current default.
+
+## [0.2.0] - 2026-07-24
+
+### Added
+
+- Stable administrator-only Home Assistant sidebar panel.
+- Server-side entity search and vertical dependency graph.
+- Parent and child branch expansion.
+- Root navigation, history, direct URLs, centering, and reset controls.
+- Cycle and broken-reference presentation.
+
+### Compatibility
+
+- Preserved the v0.1.0 report action and latest-report sensor.
+- Preserved report paths, config entries, scripts, automations,
+  dashboards, and report languages.
+- No manual migration is required.
+
+### Validation
+
+- Validated HACS upgrade from v0.1.0.
+- Validated clean HACS installation.
+- Passed HACS, Hassfest, Python, and frontend validation.
 
 ## [0.2.0-rc.1] - 2026-07-23
 
