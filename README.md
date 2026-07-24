@@ -56,6 +56,88 @@ The panel lets administrators search entities, inspect a vertical dependency gra
 
 The panel is read-only and does not modify Home Assistant entities or configuration.
 
+## Example script for dashboard-card
+
+```yaml
+sequence:
+  - action: entity_dependency_engine.generate_report
+    data:
+      entity_id: "{{ target_entity }}"
+      language: en
+      include_structural: false
+      save_public_copy: true
+    response_variable: dependency_result
+  - action: persistent_notification.create
+    data:
+      notification_id: entity_dependency_report
+      title: "Entity Report: {{ target_entity }}"
+      message: >-
+        {{ dependency_result.summary }}
+
+        Parents: {{ dependency_result.parents }} Children: {{
+        dependency_result.children }} Ancestors: {{ dependency_result.ancestors
+        }} Descendants: {{ dependency_result.descendants }}
+
+        Broken references: {{ dependency_result.broken }} Build warnings: {{
+        dependency_result.build_warnings }}
+
+        [Open report]({{ dependency_result.url }})
+
+        [Open debug report]({{ dependency_result.debug_url }})
+
+        Generated: {{ dependency_result.generated }}
+alias: "System: Analyze entity relationships (en)"
+description: Builds the dependency graph for a selected entity and saves the report.
+icon: mdi:file-tree
+mode: single
+fields:
+  target_entity:
+    name: Entity
+    description: Select the entity whose relationships should be analyzed.
+    required: true
+    selector:
+      entity: {}
+
+```
+
+## Example dashboard-card
+
+```yaml
+type: vertical-stack
+cards:
+  - show_name: true
+    show_icon: true
+    type: button
+    name: Analyze entity
+    icon: mdi:file-tree
+    show_state: false
+    tap_action:
+      action: more-info
+    hold_action:
+      action: more-info
+    entity: script.system_analysera_entitetsrelationer_duplicate
+  - type: markdown
+    title: Latest Entity Report
+    content: |-
+      {% set report = state_attr(
+        'sensor.entity_dependency_engine_last_report',
+        'report'
+      ) %}
+
+      {% if report %}
+      ```text
+      {{ report }}
+      ```
+      {% else %}
+      No report has been generated yet.
+
+      Press **Analyze entity** above.
+      {% endif %}
+grid_options:
+  columns: 9
+  rows: auto
+```
+
 ## Generate a report
 
 ```yaml
