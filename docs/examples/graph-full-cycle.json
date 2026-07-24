@@ -1,0 +1,212 @@
+{
+  "schema_version": 1,
+  "revision": "example-full-cycle-v1",
+  "root_id": "sensor.root",
+  "scope": "all",
+  "limits": {
+    "requested_max_nodes": 250,
+    "absolute_max_nodes": 1000
+  },
+  "statistics": {
+    "node_count": 5,
+    "edge_count": 5,
+    "total_node_count": 5,
+    "omitted_node_count": 0,
+    "broken_reference_count": 1,
+    "cycle_component_count": 1
+  },
+  "truncated": false,
+  "nodes": [
+    {
+      "id": "sensor.root",
+      "node_type": "entity",
+      "name": "Root",
+      "display_name": "Root",
+      "domain": "sensor",
+      "roles": [
+        "root"
+      ],
+      "upstream_depth": null,
+      "downstream_depth": null,
+      "parent_count": 2,
+      "child_count": 1,
+      "parents_loaded": true,
+      "children_loaded": true,
+      "expandable_upstream": true,
+      "expandable_downstream": true,
+      "broken": false,
+      "in_cycle": true,
+      "structural": false,
+      "runtime": null,
+      "context": {
+        "platform": "template",
+        "device_id": null,
+        "device_name": null,
+        "area_id": null,
+        "area_name": null,
+        "config_entry_id": null,
+        "integration": "template"
+      }
+    },
+    {
+      "id": "script.loop",
+      "node_type": "script",
+      "name": "Loop script",
+      "display_name": "Loop script",
+      "domain": "script",
+      "roles": [
+        "parent",
+        "descendant"
+      ],
+      "upstream_depth": 1,
+      "downstream_depth": 2,
+      "parent_count": 1,
+      "child_count": 1,
+      "parents_loaded": true,
+      "children_loaded": true,
+      "expandable_upstream": true,
+      "expandable_downstream": true,
+      "broken": false,
+      "in_cycle": true,
+      "structural": false,
+      "runtime": null,
+      "context": null
+    },
+    {
+      "id": "automation.branch",
+      "node_type": "automation",
+      "name": "Branch automation",
+      "display_name": "Branch automation",
+      "domain": "automation",
+      "roles": [
+        "ancestor",
+        "child"
+      ],
+      "upstream_depth": 2,
+      "downstream_depth": 1,
+      "parent_count": 1,
+      "child_count": 2,
+      "parents_loaded": true,
+      "children_loaded": true,
+      "expandable_upstream": true,
+      "expandable_downstream": true,
+      "broken": false,
+      "in_cycle": true,
+      "structural": false,
+      "runtime": null,
+      "context": null
+    },
+    {
+      "id": "sensor.source",
+      "node_type": "entity",
+      "name": "Source",
+      "display_name": "Source",
+      "domain": "sensor",
+      "roles": [
+        "parent"
+      ],
+      "upstream_depth": 1,
+      "downstream_depth": null,
+      "parent_count": 0,
+      "child_count": 1,
+      "parents_loaded": true,
+      "children_loaded": true,
+      "expandable_upstream": false,
+      "expandable_downstream": true,
+      "broken": false,
+      "in_cycle": false,
+      "structural": false,
+      "runtime": null,
+      "context": {
+        "platform": "mqtt",
+        "device_id": null,
+        "device_name": null,
+        "area_id": null,
+        "area_name": null,
+        "config_entry_id": null,
+        "integration": "mqtt"
+      }
+    },
+    {
+      "id": "sensor.missing",
+      "node_type": "unknown_entity",
+      "name": null,
+      "display_name": "sensor.missing",
+      "domain": "sensor",
+      "roles": [
+        "descendant"
+      ],
+      "upstream_depth": null,
+      "downstream_depth": 2,
+      "parent_count": 1,
+      "child_count": 0,
+      "parents_loaded": true,
+      "children_loaded": true,
+      "expandable_upstream": true,
+      "expandable_downstream": false,
+      "broken": true,
+      "in_cycle": false,
+      "structural": false,
+      "runtime": null,
+      "context": null
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-2ebd86fab397",
+      "source": "automation.branch",
+      "target": "script.loop",
+      "relation": "calls_script",
+      "source_parser": "automations",
+      "confidence": "certain",
+      "label": "Calls script",
+      "structural": false,
+      "cycle_edge": true
+    },
+    {
+      "id": "edge-c64fd30493b5",
+      "source": "automation.branch",
+      "target": "sensor.missing",
+      "relation": "references",
+      "source_parser": "automations",
+      "confidence": "certain",
+      "label": "References",
+      "structural": false,
+      "cycle_edge": false
+    },
+    {
+      "id": "edge-3d384d24afa4",
+      "source": "script.loop",
+      "target": "sensor.root",
+      "relation": "references",
+      "source_parser": "scripts",
+      "confidence": "certain",
+      "label": "References",
+      "structural": false,
+      "cycle_edge": true
+    },
+    {
+      "id": "edge-88a994b619f8",
+      "source": "sensor.root",
+      "target": "automation.branch",
+      "relation": "triggers",
+      "source_parser": "automations",
+      "confidence": "certain",
+      "label": "Triggers",
+      "structural": false,
+      "cycle_edge": true
+    },
+    {
+      "id": "edge-8cac22877d6d",
+      "source": "sensor.source",
+      "target": "sensor.root",
+      "relation": "reads",
+      "source_parser": "gui_templates",
+      "confidence": "certain",
+      "label": "Reads",
+      "structural": false,
+      "cycle_edge": false
+    }
+  ],
+  "warnings": []
+}

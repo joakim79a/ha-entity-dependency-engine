@@ -31,11 +31,13 @@ from .const import (
     SUPPORTED_LANGUAGES,
 )
 from .engine.application import generate_report
+from .frontend import async_register_frontend, async_unregister_frontend
 from .runtime import (
     EntityDependencyEngineRuntimeData,
     ReportSnapshot,
     load_report_snapshot,
 )
+from .websocket import async_register_websocket_commands
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -63,6 +65,7 @@ _GENERATE_REPORT_SCHEMA = vol.Schema(
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up Entity Dependency Engine and register its action."""
+    async_register_websocket_commands(hass)
 
     async def async_generate_report(call: ServiceCall) -> ServiceResponse:
         loaded_entries = [
@@ -135,6 +138,7 @@ async def async_setup_entry(
         load_report_snapshot, latest_report_file
     )
     entry.runtime_data = EntityDependencyEngineRuntimeData(report=report)
+    await async_register_frontend(hass)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 
@@ -143,4 +147,9 @@ async def async_unload_entry(
     hass: HomeAssistant, entry: EntityDependencyEngineConfigEntry
 ) -> bool:
     """Unload the config entry and its platforms."""
-    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    unload_ok = await hass.config_entries.async_unload_platforms(
+        entry, PLATFORMS
+    )
+    if unload_ok:
+        async_unregister_frontend(hass)
+    return unload_ok
