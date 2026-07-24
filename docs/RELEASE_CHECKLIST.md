@@ -1,33 +1,23 @@
 # Release checklist
 
-## Repository
+## Release-candidate validation
 
-- [ ] Work from `release/0.2.0` based on the tested alpha.7 commit.
-- [ ] Add the three release screenshots.
-- [ ] Review all English documentation.
-- [ ] Run all tests and JavaScript syntax checks.
-- [ ] Push the release branch and open a pull request to `main`.
-- [ ] Confirm HACS, Hassfest, Python, and frontend checks pass.
-
-## Prerelease
-
-- [ ] Merge to `main`.
-- [ ] Create tag `v0.2.0-rc.1` from the merge commit.
-- [ ] Create a full GitHub release and mark it as a prerelease.
-- [ ] Use `docs/RELEASE_NOTES_0.2.0-rc.1.md` as the release description.
-- [ ] Confirm HACS discovers and installs it.
-
-## Runtime validation
-
-- [ ] Upgrade from HACS-installed v0.1.0.
-- [ ] Confirm the config entry remains loaded.
-- [ ] Test the panel and existing report workflow.
-- [ ] Perform a clean HACS installation.
-- [ ] Test rollback to v0.1.0.
+- [x] Upgrade from HACS-installed v0.1.0.
+- [x] Confirm the existing config entry remains loaded.
+- [x] Test the dependency explorer panel.
+- [x] Test the existing report workflow.
+- [x] Perform a clean HACS installation.
+- [x] Confirm HACS, Hassfest, Python, and frontend checks pass.
 
 ## Stable release
 
-- [ ] Fix release-blocking defects only.
-- [ ] Change rc.1 to stable 0.2.0.
-- [ ] Repeat validation.
-- [ ] Create the full GitHub release `v0.2.0`.
+- [ ] Confirm the stable branch contains version `0.2.0`.
+- [ ] Run the full Python test suite.
+- [ ] Open a pull request to `main`.
+- [ ] Confirm all GitHub Actions checks pass.
+- [ ] Merge the stable pull request.
+- [ ] Create tag `v0.2.0` from the merge commit.
+- [ ] Publish the GitHub release using
+      `docs/RELEASE_NOTES_0.2.0.md`.
+- [ ] Confirm HACS discovers the stable version.
+- [ ] Test the stable update in Home Assistant.

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ha-entity-dependency-engine"
-version = "0.2.0rc1"
+version = "0.2.0"
 description = "A Home Assistant custom integration for recursive entity dependency analysis"
 requires-python = ">=3.13"
 

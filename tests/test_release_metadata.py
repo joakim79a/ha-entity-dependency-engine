@@ -8,7 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 INTEGRATION = ROOT / "custom_components" / "entity_dependency_engine"
-VERSION = "0.2.0-rc.1"
+VERSION = "0.2.0"
 
 
 def test_release_versions_are_consistent() -> None:
@@ -18,7 +18,7 @@ def test_release_versions_are_consistent() -> None:
     assert manifest["version"] == VERSION
 
     pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
-    assert 'version = "0.2.0rc1"' in pyproject
+    assert 'version = "0.2.0"' in pyproject
 
     frontend_python = (INTEGRATION / "frontend.py").read_text(
         encoding="utf-8"
@@ -39,10 +39,10 @@ def test_release_versions_are_consistent() -> None:
 
     assert VERSION in frontend_python
     assert VERSION in panel
-    assert "0.2.0 RC 1" in panel
+    assert "0.2.0" in panel
 
     assert (
-        'from "./entity-dependency-layout.js?v=0.2.0-rc.1"'
+        'from "./entity-dependency-layout.js?v=0.2.0"'
         in panel
     )
     assert "export const buildLayeredLayout" in layout
@@ -59,7 +59,7 @@ def test_required_release_documents_exist() -> None:
         "docs/UPGRADING.md",
         "docs/RELEASE_CHECKLIST.md",
         "docs/SCREENSHOTS.md",
-        "docs/RELEASE_NOTES_0.2.0-rc.1.md",
+        "docs/RELEASE_NOTES_0.2.0.md",
         ".github/pull_request_template.md",
         ".github/ISSUE_TEMPLATE/bug_report.yml",
         ".github/ISSUE_TEMPLATE/feature_request.yml",
@@ -88,7 +88,7 @@ def test_release_screenshots_exist() -> None:
 def test_readme_documents_compatibility() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
 
-    assert "v0.2.0-rc.1" in readme
+    assert "v0.2.0" in readme
     assert "entity_dependency_engine.generate_report" in readme
     assert "sensor.entity_dependency_engine_last_report" in readme
     assert "docs/images/panel-overview.jpg" in readme

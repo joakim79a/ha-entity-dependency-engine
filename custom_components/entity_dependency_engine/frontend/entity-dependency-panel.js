@@ -1,7 +1,7 @@
 import {
   buildLayeredLayout,
   createEdgePath,
-} from "./entity-dependency-layout.js?v=0.2.0-rc.1";
+} from "./entity-dependency-layout.js?v=0.2.0";
 
 const PANEL_TAG = "ha-panel-entity-dependency-engine";
 const ENTITY_QUERY_PARAMETER = "entity";
@@ -1758,7 +1758,7 @@ class EntityDependencyEnginePanel extends HTMLElement {
       <main class="page">
         <header class="page-header">
           <h1>Entity Dependency Engine</h1>
-          <span class="badge">0.2.0 RC 1</span>
+          <span class="badge">0.2.0</span>
         </header>
 
         <div id="error" hidden></div>
